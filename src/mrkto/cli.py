@@ -29,17 +29,12 @@ def main():
     lead_p = sub.add_parser("lead", help="Lead operations")
     lead_sub = lead_p.add_subparsers(dest="action")
 
-    # mrkto lead <email> (positional shorthand)
-    lead_p.add_argument("email_shorthand", nargs="?", help="Email address (shorthand for 'get --email')")
-    add_global_flags(lead_p)
-
-    lead_get = lead_sub.add_parser("get", help="Get lead by email or ID")
-    lead_get.add_argument("--email", help="Email address")
-    lead_get.add_argument("--id", type=int, help="Marketo lead ID")
+    lead_get = lead_sub.add_parser("get", help="Get lead by Marketo ID")
+    lead_get.add_argument("lead_id", type=int, help="Marketo lead ID")
     add_global_flags(lead_get)
 
-    lead_search = lead_sub.add_parser("search", help="Search by name")
-    lead_search.add_argument("--name", required=True, help="Full or partial name")
+    lead_search = lead_sub.add_parser("search", help="Search leads by email")
+    lead_search.add_argument("query", help="Email address")
     add_global_flags(lead_search)
 
     lead_describe = lead_sub.add_parser("describe", help="Show lead field schema")
@@ -71,7 +66,7 @@ def main():
     add_global_flags(activity_get)
 
     activity_changes = activity_sub.add_parser("changes", help="Get lead field changes")
-    activity_changes.add_argument("--watch", dest="change_fields", required=True, help="Comma-separated field names to watch for changes")
+    activity_changes.add_argument("--watch", dest="change_fields", required=True, help="Comma-separated field names to watch")
     activity_changes.add_argument("--since", type=int, default=30, help="Days back (default: 30)")
     add_global_flags(activity_changes)
 
@@ -137,8 +132,8 @@ def main():
     company_p = sub.add_parser("company", help="Company operations")
     company_sub = company_p.add_subparsers(dest="action")
 
-    company_get = company_sub.add_parser("get", help="Get company")
-    company_get.add_argument("--name", help="Company name")
+    company_get = company_sub.add_parser("get", help="Get company by name")
+    company_get.add_argument("name", help="Company name")
     add_global_flags(company_get)
 
     company_describe = company_sub.add_parser("describe", help="Company field schema")
@@ -163,13 +158,19 @@ def main():
         parser.print_help()
         sys.exit(1)
 
+    if getattr(args, "action", None) is None:
+        # Print help for the resource if no action given
+        sub.choices[args.resource].print_help()
+        sys.exit(1)
+
     fmt = getattr(args, "fmt", None) or "json"
     fields = getattr(args, "fields", None)
     field_list = fields.split(",") if fields else None
 
     try:
         result = dispatch(args)
-        print_result(result, fmt=fmt, fields=field_list)
+        if result is not None:
+            print_result(result, fmt=fmt, fields=field_list)
     except MarketoAPIError as e:
         print_error(f"[{e.code}] {e.message}")
         sys.exit(1)
@@ -188,16 +189,13 @@ def dispatch(args):
 
     elif args.resource == "lead":
         from mrkto.resources.lead import (
-            get_lead, search_leads, describe_lead,
+            get_lead, describe_lead,
             get_lead_lists, get_lead_programs, get_lead_campaigns,
         )
-        # Positional shorthand: mrkto lead user@example.com
-        if args.action is None and args.email_shorthand:
-            return get_lead(client, email=args.email_shorthand)
-        elif args.action == "get":
-            return get_lead(client, email=args.email, lead_id=args.id)
+        if args.action == "get":
+            return get_lead(client, lead_id=args.lead_id)
         elif args.action == "search":
-            return search_leads(client, name=args.name)
+            return get_lead(client, email=args.query)
         elif args.action == "describe":
             return describe_lead(client)
         elif args.action == "lists":
@@ -257,7 +255,7 @@ def dispatch(args):
     elif args.resource == "company":
         from mrkto.resources.company import get_companies, describe_company
         if args.action == "get":
-            return get_companies(client, filter_values=args.name or "")
+            return get_companies(client, filter_values=args.name)
         elif args.action == "describe":
             return describe_company(client)
 

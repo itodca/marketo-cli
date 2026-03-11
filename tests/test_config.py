@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
+from mrkto.config import load_config
+
 
 def test_config_from_munchkin_id():
     env = {
@@ -13,9 +15,7 @@ def test_config_from_munchkin_id():
         "MARKETO_CLIENT_SECRET": "test-secret",
     }
     with patch.dict(os.environ, env, clear=True):
-        from mrkto.config import load_config
-
-        cfg = load_config()
+        cfg = load_config(skip_dotenv=True)
         assert cfg.munchkin_id == "123-ABC-456"
         assert cfg.client_id == "test-client-id"
         assert cfg.client_secret == "test-secret"
@@ -31,15 +31,11 @@ def test_config_url_override():
         "MARKETO_REST_URL": "https://custom.example.com/rest",
     }
     with patch.dict(os.environ, env, clear=True):
-        from mrkto.config import load_config
-
-        cfg = load_config()
+        cfg = load_config(skip_dotenv=True)
         assert cfg.rest_url == "https://custom.example.com/rest"
 
 
 def test_config_missing_required():
     with patch.dict(os.environ, {}, clear=True):
-        from mrkto.config import load_config
-
         with pytest.raises(SystemExit):
-            load_config()
+            load_config(skip_dotenv=True)

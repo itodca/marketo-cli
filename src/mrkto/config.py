@@ -16,8 +16,9 @@ class Config:
     identity_url: str
 
 
-def load_config() -> Config:
-    load_dotenv()
+def load_config(skip_dotenv: bool = False) -> Config:
+    if not skip_dotenv:
+        load_dotenv()
 
     munchkin_id = os.environ.get("MARKETO_MUNCHKIN_ID", "")
     client_id = os.environ.get("MARKETO_CLIENT_ID", "")

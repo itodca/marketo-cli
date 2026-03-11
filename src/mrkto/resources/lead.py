@@ -3,6 +3,17 @@
 DEFAULT_FIELDS = "id,email,firstName,lastName,company,unsubscribed,marketingSuspended,emailInvalid,sfdcLeadId,sfdcContactId,createdAt,updatedAt"
 
 
+def lookup_lead(client, query, fields=None):
+    """Auto-detect query type and look up lead."""
+    query = query.strip()
+    if query.isdigit():
+        return get_lead(client, lead_id=int(query), fields=fields)
+    elif "@" in query:
+        return get_lead(client, email=query, fields=fields)
+    else:
+        return search_leads(client, name=query, fields=fields)
+
+
 def get_lead(client, email=None, lead_id=None, fields=None):
     """Get lead by email or Marketo ID."""
     if email:
