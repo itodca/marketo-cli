@@ -8,6 +8,18 @@ from mrkto.client import MarketoClient, MarketoAPIError
 from mrkto.output import print_result, print_error
 
 
+def parse_params(params):
+    """Parse key=value pairs into a dict."""
+    result = {}
+    for p in params:
+        key, _, value = p.partition("=")
+        if not value:
+            print_error(f"Invalid param '{p}'. Use key=value format.")
+            sys.exit(1)
+        result[key] = value
+    return result
+
+
 def add_global_flags(parser):
     parser.add_argument("--json", dest="fmt", action="store_const", const="json", help="JSON output (default)")
     parser.add_argument("--compact", dest="fmt", action="store_const", const="compact", help="One-line-per-record")
@@ -34,7 +46,7 @@ def main():
     add_global_flags(lead_get)
 
     lead_list = lead_sub.add_parser("list", help="List leads by filter")
-    lead_list.add_argument("filter", help="Filter as key=value (e.g. email=user@co)")
+    lead_list.add_argument("params", nargs="+", help="Filters as key=value pairs (e.g. email=user@co)")
     add_global_flags(lead_list)
 
     lead_describe = lead_sub.add_parser("describe", help="Show lead field schema")
@@ -195,11 +207,8 @@ def dispatch(args):
         if args.action == "get":
             return get_lead(client, lead_id=args.lead_id)
         elif args.action == "list":
-            filter_type, _, filter_values = args.filter.partition("=")
-            if not filter_values:
-                print_error("Filter must be key=value (e.g. email=user@example.com)")
-                sys.exit(1)
-            return list_leads(client, filter_type, filter_values)
+            params = parse_params(args.params)
+            return list_leads(client, params)
         elif args.action == "describe":
             return describe_lead(client)
         elif args.action == "lists":

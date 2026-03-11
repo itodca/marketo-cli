@@ -3,14 +3,24 @@
 DEFAULT_FIELDS = "id,email,firstName,lastName,company,unsubscribed,marketingSuspended,emailInvalid,sfdcLeadId,sfdcContactId,createdAt,updatedAt"
 
 
-def list_leads(client, filter_type, filter_values, fields=None):
-    """List leads by any supported filter type."""
-    params = {
+def list_leads(client, params):
+    """List leads by filter params.
+
+    First key=value pair becomes filterType/filterValues.
+    Additional params passed through to the API.
+    """
+    items = list(params.items())
+    filter_type, filter_values = items[0]
+    api_params = {
         "filterType": filter_type,
         "filterValues": filter_values,
-        "fields": fields or DEFAULT_FIELDS,
     }
-    result = client.get("/v1/leads.json", params=params)
+    # Pass remaining params through (e.g. fields=id,email)
+    for key, value in items[1:]:
+        api_params[key] = value
+    if "fields" not in api_params:
+        api_params["fields"] = DEFAULT_FIELDS
+    result = client.get("/v1/leads.json", params=api_params)
     return result.get("result", [])
 
 
