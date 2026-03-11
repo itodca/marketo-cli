@@ -107,9 +107,15 @@ mrkto help                                Full command reference
 
 Commands that modify data (`schedule`, `trigger`, `add`, `remove`) require `--execute`. Without it, they run in dry-run mode.
 
-## Claude Code Integration
+## Agent Skill
+
+Ships with an agent skill compatible with Claude Code, Cursor, Codex, and [37+ agents](https://github.com/vercel-labs/skills#supported-agents).
 
 ```bash
+# Install via npx skills (any supported agent)
+npx skills add itodca/marketo-cli
+
+# Or install via mrkto directly
 mrkto skill install              # Install for all projects
 mrkto skill install --scope project  # Install for current project only
 ```

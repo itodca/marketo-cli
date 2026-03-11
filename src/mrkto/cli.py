@@ -168,9 +168,9 @@ def main():
     add_global_flags(company_describe)
 
     # --- skill ---
-    skill_p = sub.add_parser("skill", help="Claude Code skill management")
+    skill_p = sub.add_parser("skill", help="Agent skill management")
     skill_sub = skill_p.add_subparsers(dest="action")
-    skill_install = skill_sub.add_parser("install", help="Install Claude Code skill")
+    skill_install = skill_sub.add_parser("install", help="Install agent skill")
     skill_install.add_argument("--scope", choices=["user", "project"], default="user",
                                help="Install scope (default: user)")
 

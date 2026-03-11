@@ -1,6 +1,5 @@
-"""Skill install command — copies Claude Code skill to user or project scope."""
+"""Skill install command — copies agent skill to user or project scope."""
 
-import shutil
 import sys
 from pathlib import Path
 from importlib.resources import files
@@ -27,5 +26,5 @@ def install_skill(scope="user"):
 
     print(f"Skill installed to {target}")
     print(f"Scope: {scope}")
-    print("Claude Code will now use 'mrkto' for Marketo operations.")
+    print("AI agents will now use 'mrkto' for Marketo operations.")
     return {"status": "installed", "path": str(target), "scope": scope}

@@ -15,7 +15,7 @@ def run_setup(profile=None):
 
     # Step 2: Skill
     print()
-    answer = input("Install Claude Code skill? [Y/n] ").strip().lower()
+    answer = input("Install agent skill? [Y/n] ").strip().lower()
     if answer in ("", "y", "yes"):
         scope = input("Scope — user (all projects) or project (this dir)? [user/project] ").strip().lower()
         if scope not in ("user", "project"):
