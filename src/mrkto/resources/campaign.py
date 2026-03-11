@@ -3,14 +3,17 @@
 import sys
 
 
-def list_campaigns(client, name=None, program_name=None):
+def list_campaigns(client, name=None, program_name=None, limit=None):
     """List campaigns, optionally filtered by name or program."""
     params = {}
     if name:
         params["name"] = name
     if program_name:
         params["programName"] = program_name
-    return client.get_paginated("/v1/campaigns.json", params=params)
+    results = client.get_paginated("/v1/campaigns.json", params=params)
+    if limit:
+        results = results[:limit]
+    return results
 
 
 def get_campaign(client, campaign_id):

@@ -12,6 +12,7 @@ def make_config():
         client_secret="test-secret",
         rest_url="https://123-ABC-456.mktorest.com/rest",
         identity_url="https://123-ABC-456.mktorest.com/identity",
+        profile="default",
     )
 
 

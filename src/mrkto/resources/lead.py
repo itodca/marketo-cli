@@ -3,25 +3,20 @@
 DEFAULT_FIELDS = "id,email,firstName,lastName,company,unsubscribed,marketingSuspended,emailInvalid,sfdcLeadId,sfdcContactId,createdAt,updatedAt"
 
 
-def list_leads(client, params):
-    """List leads by filter params.
-
-    First key=value pair becomes filterType/filterValues.
-    Additional params passed through to the API.
-    """
-    items = list(params.items())
-    filter_type, filter_values = items[0]
-    api_params = {
+def list_leads(client, filter_type, filter_values, fields=None, limit=None):
+    """List leads by any supported filter type."""
+    params = {
         "filterType": filter_type,
         "filterValues": filter_values,
+        "fields": fields or DEFAULT_FIELDS,
     }
-    # Pass remaining params through (e.g. fields=id,email)
-    for key, value in items[1:]:
-        api_params[key] = value
-    if "fields" not in api_params:
-        api_params["fields"] = DEFAULT_FIELDS
-    result = client.get("/v1/leads.json", params=api_params)
-    return result.get("result", [])
+    if limit:
+        params["batchSize"] = min(limit, 300)  # Marketo max is 300
+    result = client.get("/v1/leads.json", params=params)
+    results = result.get("result", [])
+    if limit:
+        results = results[:limit]
+    return results
 
 
 def get_lead(client, email=None, lead_id=None, fields=None):

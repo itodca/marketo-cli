@@ -3,12 +3,15 @@
 import sys
 
 
-def list_lists(client, name=None):
+def list_lists(client, name=None, limit=None):
     """List all static lists."""
     params = {}
     if name:
         params["name"] = name
-    return client.get_paginated("/v1/lists.json", params=params)
+    results = client.get_paginated("/v1/lists.json", params=params)
+    if limit:
+        results = results[:limit]
+    return results
 
 
 def get_list(client, list_id):
@@ -17,9 +20,15 @@ def get_list(client, list_id):
     return result.get("result", [])
 
 
-def get_list_members(client, list_id):
+def get_list_members(client, list_id, fields=None, limit=None):
     """Get all members of a list (paginated)."""
-    return client.get_paginated(f"/v1/lists/{list_id}/leads.json")
+    params = {}
+    if fields:
+        params["fields"] = fields
+    results = client.get_paginated(f"/v1/lists/{list_id}/leads.json", params=params)
+    if limit:
+        results = results[:limit]
+    return results
 
 
 def add_to_list(client, list_id, lead_ids, dry_run=True):

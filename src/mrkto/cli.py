@@ -29,11 +29,19 @@ def add_global_flags(parser):
 
 def main():
     parser = argparse.ArgumentParser(prog="mrkto", description="Marketo REST API CLI")
+    parser.add_argument("--profile", help="Named profile (default: MRKTO_PROFILE env var or 'default')")
     sub = parser.add_subparsers(dest="resource")
+
+    # --- setup ---
+    sub.add_parser("setup", help="First-time setup (auth + skill install)")
 
     # --- auth ---
     auth_p = sub.add_parser("auth", help="Authentication")
     auth_sub = auth_p.add_subparsers(dest="action")
+    auth_setup = auth_sub.add_parser("setup", help="Configure credentials")
+    auth_setup.add_argument("--profile", dest="auth_profile", help="Profile name to create")
+    auth_list = auth_sub.add_parser("list", help="List configured profiles")
+    add_global_flags(auth_list)
     auth_check = auth_sub.add_parser("check", help="Verify credentials")
     add_global_flags(auth_check)
 
@@ -46,7 +54,10 @@ def main():
     add_global_flags(lead_get)
 
     lead_list = lead_sub.add_parser("list", help="List leads by filter")
-    lead_list.add_argument("params", nargs="+", help="Filters as key=value pairs (e.g. email=user@co)")
+    lead_list.add_argument("--email", help="Filter by email address")
+    lead_list.add_argument("--id", help="Filter by Marketo ID(s), comma-separated")
+    lead_list.add_argument("--filter", help="Custom filter as key=value (e.g. sfdcContactId=003xxx)")
+    lead_list.add_argument("--limit", type=int, help="Max results to return")
     add_global_flags(lead_list)
 
     lead_describe = lead_sub.add_parser("describe", help="Show lead field schema")
@@ -89,6 +100,7 @@ def main():
     campaign_list = campaign_sub.add_parser("list", help="List campaigns")
     campaign_list.add_argument("--name", help="Filter by name")
     campaign_list.add_argument("--program", help="Filter by program name")
+    campaign_list.add_argument("--limit", type=int, help="Max results to return")
     add_global_flags(campaign_list)
 
     campaign_get = campaign_sub.add_parser("get", help="Get campaign by ID")
@@ -113,6 +125,7 @@ def main():
 
     list_list = list_sub.add_parser("list", help="List all static lists")
     list_list.add_argument("--name", help="Filter by name")
+    list_list.add_argument("--limit", type=int, help="Max results to return")
     add_global_flags(list_list)
 
     list_get = list_sub.add_parser("get", help="Get list by ID")
@@ -121,6 +134,7 @@ def main():
 
     list_members = list_sub.add_parser("members", help="Get list members")
     list_members.add_argument("list_id", type=int, help="List ID")
+    list_members.add_argument("--limit", type=int, help="Max results to return")
     add_global_flags(list_members)
 
     list_add = list_sub.add_parser("add", help="Add leads to list")
@@ -144,12 +158,24 @@ def main():
     company_p = sub.add_parser("company", help="Company operations")
     company_sub = company_p.add_subparsers(dest="action")
 
-    company_get = company_sub.add_parser("get", help="Get company by name")
-    company_get.add_argument("name", help="Company name")
-    add_global_flags(company_get)
+    company_list = company_sub.add_parser("list", help="List companies by filter")
+    company_list.add_argument("--name", help="Filter by company name")
+    company_list.add_argument("--filter", help="Custom filter as key=value (e.g. externalCompanyId=xxx)")
+    company_list.add_argument("--limit", type=int, help="Max results to return")
+    add_global_flags(company_list)
 
     company_describe = company_sub.add_parser("describe", help="Company field schema")
     add_global_flags(company_describe)
+
+    # --- skill ---
+    skill_p = sub.add_parser("skill", help="Claude Code skill management")
+    skill_sub = skill_p.add_subparsers(dest="action")
+    skill_install = skill_sub.add_parser("install", help="Install Claude Code skill")
+    skill_install.add_argument("--scope", choices=["user", "project"], default="user",
+                               help="Install scope (default: user)")
+
+    # --- help ---
+    sub.add_parser("help", help="Full command reference")
 
     # --- stats ---
     stats_p = sub.add_parser("stats", help="API usage and errors")
@@ -169,6 +195,16 @@ def main():
     if args.resource is None:
         parser.print_help()
         sys.exit(1)
+
+    if args.resource == "help":
+        from mrkto.help import print_help
+        print_help()
+        sys.exit(0)
+
+    if args.resource == "setup":
+        from mrkto.resources.setup import run_setup
+        run_setup(profile=getattr(args, "profile", None))
+        sys.exit(0)
 
     if getattr(args, "action", None) is None:
         # Print help for the resource if no action given
@@ -192,7 +228,22 @@ def main():
 
 def dispatch(args):
     """Route to the appropriate resource function."""
-    config = load_config()
+    profile = getattr(args, "profile", None)
+
+    if args.resource == "auth" and args.action == "setup":
+        from mrkto.resources.auth import setup_auth
+        return setup_auth(profile=getattr(args, "auth_profile", None) or profile)
+
+    if args.resource == "auth" and args.action == "list":
+        from mrkto.resources.auth import list_auth
+        return list_auth()
+
+    if args.resource == "skill":
+        from mrkto.resources.skill import install_skill
+        if args.action == "install":
+            return install_skill(scope=args.scope)
+
+    config = load_config(profile=profile)
     client = MarketoClient(config)
 
     if args.resource == "auth":
@@ -207,8 +258,21 @@ def dispatch(args):
         if args.action == "get":
             return get_lead(client, lead_id=args.lead_id)
         elif args.action == "list":
-            params = parse_params(args.params)
-            return list_leads(client, params)
+            if args.email:
+                filter_type, filter_values = "email", args.email
+            elif args.id:
+                filter_type, filter_values = "id", args.id
+            elif args.filter:
+                filter_type, _, filter_values = args.filter.partition("=")
+                if not filter_values:
+                    print_error("--filter must be key=value (e.g. --filter sfdcContactId=003xxx)")
+                    sys.exit(1)
+            else:
+                print_error("Provide --email, --id, or --filter")
+                sys.exit(1)
+            return list_leads(client, filter_type, filter_values,
+                              fields=getattr(args, "fields", None),
+                              limit=args.limit)
         elif args.action == "describe":
             return describe_lead(client)
         elif args.action == "lists":
@@ -235,7 +299,7 @@ def dispatch(args):
             list_campaigns, get_campaign, schedule_campaign, trigger_campaign,
         )
         if args.action == "list":
-            return list_campaigns(client, name=args.name, program_name=args.program)
+            return list_campaigns(client, name=args.name, program_name=args.program, limit=args.limit)
         elif args.action == "get":
             return get_campaign(client, args.campaign_id)
         elif args.action == "schedule":
@@ -250,11 +314,13 @@ def dispatch(args):
             add_to_list, remove_from_list, is_member,
         )
         if args.action == "list":
-            return list_lists(client, name=args.name)
+            return list_lists(client, name=args.name, limit=args.limit)
         elif args.action == "get":
             return get_list(client, args.list_id)
         elif args.action == "members":
-            return get_list_members(client, args.list_id)
+            return get_list_members(client, args.list_id,
+                                    fields=getattr(args, "fields", None),
+                                    limit=args.limit)
         elif args.action == "add":
             lead_ids = [int(x) for x in args.leads.split(",")]
             return add_to_list(client, args.list_id, lead_ids, dry_run=not args.execute)
@@ -266,9 +332,21 @@ def dispatch(args):
             return is_member(client, args.list_id, lead_ids)
 
     elif args.resource == "company":
-        from mrkto.resources.company import get_companies, describe_company
-        if args.action == "get":
-            return get_companies(client, filter_values=args.name)
+        from mrkto.resources.company import list_companies, describe_company
+        if args.action == "list":
+            if args.name:
+                filter_type, filter_values = "company", args.name
+            elif args.filter:
+                filter_type, _, filter_values = args.filter.partition("=")
+                if not filter_values:
+                    print_error("--filter must be key=value (e.g. --filter externalCompanyId=xxx)")
+                    sys.exit(1)
+            else:
+                print_error("Provide --name or --filter")
+                sys.exit(1)
+            return list_companies(client, filter_type, filter_values,
+                                  fields=getattr(args, "fields", None),
+                                  limit=args.limit)
         elif args.action == "describe":
             return describe_company(client)
 
