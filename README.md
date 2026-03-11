@@ -2,6 +2,8 @@
 
 Lightweight CLI for the Marketo REST API. Built for humans and AI agents.
 
+Designed for use with AI coding assistants like Claude Code, Cursor, and other LLM-powered tools. Explicit flags, JSON output, and a built-in `help` command make it easy for agents to discover and use. Ships with a Claude Code skill for zero-config integration.
+
 ## Installation
 
 ```bash
