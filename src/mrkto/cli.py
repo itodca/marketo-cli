@@ -33,9 +33,9 @@ def main():
     lead_get.add_argument("lead_id", type=int, help="Marketo lead ID")
     add_global_flags(lead_get)
 
-    lead_search = lead_sub.add_parser("search", help="Search leads by email")
-    lead_search.add_argument("query", help="Email address")
-    add_global_flags(lead_search)
+    lead_list = lead_sub.add_parser("list", help="List leads by email")
+    lead_list.add_argument("query", help="Email address to filter by")
+    add_global_flags(lead_list)
 
     lead_describe = lead_sub.add_parser("describe", help="Show lead field schema")
     add_global_flags(lead_describe)
@@ -194,7 +194,7 @@ def dispatch(args):
         )
         if args.action == "get":
             return get_lead(client, lead_id=args.lead_id)
-        elif args.action == "search":
+        elif args.action == "list":
             return get_lead(client, email=args.query)
         elif args.action == "describe":
             return describe_lead(client)
