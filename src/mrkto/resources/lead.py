@@ -3,15 +3,15 @@
 DEFAULT_FIELDS = "id,email,firstName,lastName,company,unsubscribed,marketingSuspended,emailInvalid,sfdcLeadId,sfdcContactId,createdAt,updatedAt"
 
 
-def lookup_lead(client, query, fields=None):
-    """Auto-detect query type and look up lead."""
-    query = query.strip()
-    if query.isdigit():
-        return get_lead(client, lead_id=int(query), fields=fields)
-    elif "@" in query:
-        return get_lead(client, email=query, fields=fields)
-    else:
-        return search_leads(client, name=query, fields=fields)
+def list_leads(client, filter_type, filter_values, fields=None):
+    """List leads by any supported filter type."""
+    params = {
+        "filterType": filter_type,
+        "filterValues": filter_values,
+        "fields": fields or DEFAULT_FIELDS,
+    }
+    result = client.get("/v1/leads.json", params=params)
+    return result.get("result", [])
 
 
 def get_lead(client, email=None, lead_id=None, fields=None):

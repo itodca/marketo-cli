@@ -33,8 +33,8 @@ def main():
     lead_get.add_argument("lead_id", type=int, help="Marketo lead ID")
     add_global_flags(lead_get)
 
-    lead_list = lead_sub.add_parser("list", help="List leads by email")
-    lead_list.add_argument("query", help="Email address to filter by")
+    lead_list = lead_sub.add_parser("list", help="List leads by filter")
+    lead_list.add_argument("filter", help="Filter as key=value (e.g. email=user@co)")
     add_global_flags(lead_list)
 
     lead_describe = lead_sub.add_parser("describe", help="Show lead field schema")
@@ -189,13 +189,17 @@ def dispatch(args):
 
     elif args.resource == "lead":
         from mrkto.resources.lead import (
-            get_lead, describe_lead,
+            get_lead, list_leads, describe_lead,
             get_lead_lists, get_lead_programs, get_lead_campaigns,
         )
         if args.action == "get":
             return get_lead(client, lead_id=args.lead_id)
         elif args.action == "list":
-            return get_lead(client, email=args.query)
+            filter_type, _, filter_values = args.filter.partition("=")
+            if not filter_values:
+                print_error("Filter must be key=value (e.g. email=user@example.com)")
+                sys.exit(1)
+            return list_leads(client, filter_type, filter_values)
         elif args.action == "describe":
             return describe_lead(client)
         elif args.action == "lists":
