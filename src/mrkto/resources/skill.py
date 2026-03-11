@@ -1,30 +1,24 @@
-"""Skill install command — copies agent skill to user or project scope."""
+"""Skill install command — delegates to npx skills ecosystem."""
 
+import shutil
+import subprocess
 import sys
-from pathlib import Path
-from importlib.resources import files
-
-
-SKILL_SOURCE = files("mrkto.skill").joinpath("SKILL.md")
-
-USER_SKILL_DIR = Path.home() / ".claude" / "skills" / "mrkto"
-PROJECT_SKILL_DIR = Path.cwd() / ".claude" / "skills" / "mrkto"
 
 
 def install_skill(scope="user"):
-    """Install the mrkto skill for Claude Code."""
-    if scope == "project":
-        target_dir = PROJECT_SKILL_DIR
-    else:
-        target_dir = USER_SKILL_DIR
+    """Install the mrkto agent skill via npx skills."""
+    if not shutil.which("npx"):
+        print("npx not found. Install Node.js or run manually:", file=sys.stderr)
+        print("  npx skills add itodca/marketo-cli", file=sys.stderr)
+        sys.exit(1)
 
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / "SKILL.md"
+    cmd = ["npx", "skills", "add", "itodca/marketo-cli"]
+    if scope == "user":
+        cmd.append("--global")
 
-    source_text = SKILL_SOURCE.read_text()
-    target.write_text(source_text)
+    print(f"Running: {' '.join(cmd)}")
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        sys.exit(result.returncode)
 
-    print(f"Skill installed to {target}")
-    print(f"Scope: {scope}")
-    print("AI agents will now use 'mrkto' for Marketo operations.")
-    return {"status": "installed", "path": str(target), "scope": scope}
+    return None
