@@ -23,7 +23,7 @@ Install the mrkto binary from GitHub Releases.
 
 Usage:
   curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash
-  curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash -s -- --version v0.1.0
+  curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash -s -- --version v0.1.1
 
 Options:
   --version <tag>       Release tag to install. Default: latest

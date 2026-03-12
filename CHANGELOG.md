@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1] — 2026-03-12
+
+Documentation-only follow-up release.
+
+- Refresh the published PyPI project page so the install guidance points at `pipx install marketo-cli`
+- Keep the GitHub README and PyPI long description aligned after the initial public beta release
+
 ## [0.1.0] — 2026-03-12
 
 Public beta release.
