@@ -1,15 +1,23 @@
 # Changelog
 
+## [0.1.2] — 2026-03-12
+
+Documentation-focused release.
+
+- Rewrite the README around purpose, profiles, command shape, and stdout-based file output
+- Add deeper docs for command model, profiles, and common examples under `docs/`
+- Keep the PyPI package page aligned with the improved public documentation
+
 ## [0.1.1] — 2026-03-12
 
 Documentation-only follow-up release.
 
 - Refresh the published PyPI project page so the install guidance points at `pipx install marketo-cli`
-- Keep the GitHub README and PyPI long description aligned after the initial public beta release
+- Keep the GitHub README and PyPI long description aligned after the initial public release
 
 ## [0.1.0] — 2026-03-12
 
-Public beta release.
+Initial public release.
 
 - Typer-based CLI with singular resource nouns and explicit Marketo concepts like `smart-campaign`, `static-list`, and `smart-list`
 - Lead lookups by email, id, or any filter field, plus static list, program, and smart campaign memberships

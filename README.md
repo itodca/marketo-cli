@@ -1,8 +1,21 @@
-# mrkto
+# marketo-cli
 
-Public beta Marketo REST API CLI for humans and agents.
+Marketo REST API CLI for humans and agents. The installed command is `mrkto`.
 
 The CLI uses explicit resource names, structured JSON output, dry-run defaults for writes, and a raw `api` escape hatch for unsupported endpoints.
+
+## What It Is For
+
+`mrkto` is a command-line wrapper around common Marketo REST API workflows.
+
+It is built for:
+
+- looking up leads, activities, companies, programs, and campaigns quickly
+- making a few safe operational changes like adding leads to a static list or triggering a smart campaign
+- scripting Marketo tasks in shells, automations, and AI agents
+- falling back to raw API calls when a higher-level command does not exist yet
+
+If you already know the Marketo API but want a cleaner daily interface, `mrkto` is the abstraction layer. If you are using agents, the CLI keeps the contract stable with structured JSON output and predictable exit behavior.
 
 ## Installation
 
@@ -22,7 +35,7 @@ Useful options:
 
 ```bash
 # Install a specific release tag
-curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.1
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.2
 
 # Install somewhere else and leave PATH alone
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --install-dir "$HOME/bin" --no-modify-path
@@ -60,12 +73,51 @@ mrkto smart-campaign trigger 1234 --lead 1001 --lead 1002
 mrkto api get /v1/leads.json --query filterType=email --query filterValues=user@example.com
 ```
 
-## Configuration
+## Profiles
 
-Credentials are stored in `~/.config/mrkto/`.
+A profile is a saved Marketo connection.
+
+Use profiles when you work with:
+
+- more than one Marketo instance
+- a production and sandbox instance
+- different clients or business units
+- project folders that should automatically use different credentials
+
+Examples:
+
+- `default` for your main production instance
+- `sandbox` for testing
+- `acme` and `globex` if you work across clients
+
+Credentials are stored in `~/.config/mrkto/`:
 
 - Default profile: `~/.config/mrkto/config`
 - Named profiles: `~/.config/mrkto/profiles/<name>`
+
+Create them with:
+
+```bash
+mrkto auth setup
+mrkto auth setup --profile sandbox
+mrkto auth setup --profile acme
+```
+
+Use them with:
+
+```bash
+mrkto lead list --email user@example.com --profile sandbox
+MRKTO_PROFILE=acme mrkto stats usage
+```
+
+If you keep a `.mrkto-profile` file in a project directory, `mrkto` will automatically use that profile when you run commands from that directory tree.
+
+Example:
+
+```bash
+echo "sandbox" > .mrkto-profile
+mrkto auth check
+```
 
 Profile resolution order:
 
@@ -86,7 +138,30 @@ Environment variables override file-based config:
 
 ## Command Shape
 
-The CLI uses singular resource nouns:
+The CLI uses singular top-level resource nouns and explicit Marketo concepts:
+
+- `lead`, `activity`, `company`, `program`
+- `smart-campaign`, `static-list`, `smart-list`
+- `auth`, `stats`, `api`
+
+The pattern is:
+
+```text
+mrkto <resource> <action> [flags]
+```
+
+Examples:
+
+```bash
+mrkto lead get 12345
+mrkto lead list --email user@example.com
+mrkto static-list add 456 --lead 1001 --lead 1002 --execute
+mrkto api get /v1/leads.json --query filterType=email --query filterValues=user@example.com
+```
+
+The CLI uses explicit resource nouns instead of mirroring Marketo API casing, so you get shell-friendly names like `smart-campaign` instead of `smartCampaign`.
+
+Full command shape:
 
 ```text
 mrkto auth setup
@@ -135,11 +210,25 @@ mrkto api delete
 
 ## Output
 
-The default output is pretty JSON. Every command also supports:
+The default output is pretty JSON.
+
+Other output modes:
 
 - `--compact` for one JSON object per line
 - `--raw` for single-line JSON of the full returned payload
 - `--fields` to limit displayed fields on structured results
+
+The CLI writes result data to `stdout` and errors to `stderr`, which means file output works naturally with shell redirection.
+
+Examples:
+
+```bash
+mrkto lead list --email user@example.com > lead.json
+mrkto activity list 12345 --compact > activities.ndjson
+mrkto lead list --email user@example.com --raw | jq .
+```
+
+There is no special file-output flag because normal shell redirection already gives you predictable machine output.
 
 ## Write Safety
 
@@ -159,11 +248,17 @@ mrkto skill install
 mrkto skill install --scope project
 ```
 
+## More Docs
+
+- [Command model](docs/command-model.md)
+- [Profiles](docs/profiles.md)
+- [Examples](docs/examples.md)
+
 ## Release Automation
 
 - CI runs tests, compile checks, and package builds on pushes and pull requests
 - GitHub Releases build macOS and Linux binaries on `v*` tags
-- PyPI publishing is prepared through GitHub Actions trusted publishing once the PyPI project is configured
+- PyPI publishing runs through GitHub Actions trusted publishing
 
 ## Source Contracts
 
