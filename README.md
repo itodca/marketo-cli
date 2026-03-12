@@ -1,124 +1,195 @@
 # mrkto
 
-Lightweight CLI for the Marketo REST API. Built for humans and AI agents.
+Public beta Marketo REST API CLI for humans and agents.
 
-Designed for use with AI coding assistants like Claude Code, Cursor, and other LLM-powered tools. Explicit flags, JSON output, and a built-in `help` command make it easy for agents to discover and use. Ships with a Claude Code skill for zero-config integration.
+The CLI uses explicit resource names, structured JSON output, dry-run defaults for writes, and a raw `api` escape hatch for unsupported endpoints.
 
 ## Installation
 
-```bash
-pip install git+https://github.com/itodca/marketo-cli.git
-```
-
-Or with the install script:
+Primary install path for macOS and Linux:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash
 ```
 
+The installer:
+
+- downloads the matching binary from GitHub Releases
+- installs it to `~/.local/bin` by default
+- adds that directory to your shell `PATH` if needed
+
+Useful options:
+
+```bash
+# Install a specific release tag
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.0
+
+# Install somewhere else and leave PATH alone
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --install-dir "$HOME/bin" --no-modify-path
+```
+
+Other install options:
+
+- download the release artifact directly from GitHub Releases
+- install from source with `pipx install git+https://github.com/itodca/marketo-cli.git`
+- install from a checkout with `pip install .`
+
 ## Quick Start
 
 ```bash
-# First-time setup (auth + Claude Code skill)
+# First-time setup
 mrkto setup
 
-# Or configure credentials manually
-mrkto auth setup
+# Or configure a profile explicitly
+mrkto auth setup --profile production
+
+# Check auth
+mrkto auth check
 
 # Look up a lead
 mrkto lead list --email user@example.com
 
-# Check API health
-mrkto stats usage
+# Browse smart campaigns
+mrkto smart-campaign list --active --limit 10
+
+# Dry-run a campaign trigger
+mrkto smart-campaign trigger 1234 --lead 1001 --lead 1002
+
+# Raw API request
+mrkto api get /v1/leads.json --query filterType=email --query filterValues=user@example.com
 ```
 
 ## Configuration
 
-Credentials are stored in `~/.config/mrkto/config`. Run `mrkto setup` to configure interactively.
+Credentials are stored in `~/.config/mrkto/`.
 
-Env vars override the config file (useful for CI/scripting):
+- Default profile: `~/.config/mrkto/config`
+- Named profiles: `~/.config/mrkto/profiles/<name>`
+
+Profile resolution order:
+
+1. `--profile`
+2. `MRKTO_PROFILE`
+3. `.mrkto-profile` in the current directory tree
+4. `default`
+
+Environment variables override file-based config:
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `MARKETO_MUNCHKIN_ID` | Yes | Your Marketo munchkin ID (e.g., `123-ABC-456`) |
-| `MARKETO_CLIENT_ID` | Yes | API client ID from LaunchPoint |
-| `MARKETO_CLIENT_SECRET` | Yes | API client secret |
+| --- | --- | --- |
+| `MARKETO_MUNCHKIN_ID` | Yes | Marketo munchkin id |
+| `MARKETO_CLIENT_ID` | Yes | LaunchPoint client id |
+| `MARKETO_CLIENT_SECRET` | Yes | LaunchPoint client secret |
 | `MARKETO_REST_URL` | No | Override REST endpoint |
 | `MARKETO_IDENTITY_URL` | No | Override identity endpoint |
 
-Docs: https://experienceleague.adobe.com/en/docs/marketo-developer/marketo/rest/rest-api
+## Command Shape
 
-## Commands
+The CLI uses singular resource nouns:
 
-Run `mrkto help` for the full reference. Summary:
+```text
+mrkto auth setup
+mrkto auth list
+mrkto auth check
 
+mrkto lead get
+mrkto lead list
+mrkto lead describe
+mrkto lead static-lists
+mrkto lead programs
+mrkto lead smart-campaigns
+
+mrkto activity list
+mrkto activity types
+mrkto activity changes
+
+mrkto smart-campaign list
+mrkto smart-campaign get
+mrkto smart-campaign schedule
+mrkto smart-campaign trigger
+
+mrkto static-list list
+mrkto static-list get
+mrkto static-list members
+mrkto static-list add
+mrkto static-list remove
+mrkto static-list check
+
+mrkto smart-list list
+mrkto smart-list get
+
+mrkto company list
+mrkto company describe
+
+mrkto program list
+mrkto program get
+
+mrkto stats usage
+mrkto stats errors
+
+mrkto api get
+mrkto api post
+mrkto api delete
 ```
-mrkto setup                               First-time setup (auth + skill)
-mrkto auth setup                          Configure credentials
-mrkto auth check                          Verify credentials
 
-mrkto lead list --email <addr>            List leads by email
-mrkto lead list --id <ids>                List leads by Marketo ID(s)
-mrkto lead list --filter <key=value>      List leads by any filter field
-mrkto lead get <id>                       Get lead by Marketo ID
-mrkto lead describe                       Show lead field schema
-mrkto lead lists <id>                     Static lists a lead belongs to
-mrkto lead programs <id>                  Programs a lead is in
-mrkto lead campaigns <id>                 Smart campaigns for a lead
+## Output
 
-mrkto activity types                      List activity types
-mrkto activity get <lead_id>              Activities for a lead
-mrkto activity changes --watch <fields>   Lead field changes
+The default output is pretty JSON. Every command also supports:
 
-mrkto campaign list                       List campaigns
-mrkto campaign get <id>                   Get campaign by ID
-mrkto campaign schedule <id> --execute    Schedule a batch campaign
-mrkto campaign trigger <id> --execute     Trigger campaign for leads
-
-mrkto list list                           List static lists
-mrkto list get <id>                       Get list by ID
-mrkto list members <id>                   Get list members
-mrkto list add <id> --leads <ids> --execute    Add leads to list
-mrkto list remove <id> --leads <ids> --execute Remove leads from list
-mrkto list check <id> --leads <ids>       Check membership
-
-mrkto company list --name <name>          List companies by name
-mrkto company list --filter <key=value>   List companies by any filter
-mrkto company describe                    Company field schema
-
-mrkto stats usage                         API usage stats
-mrkto stats errors                        API error stats
-
-mrkto skill install [--scope user|project] Install Claude Code skill
-mrkto help                                Full command reference
-```
-
-## Global Flags
-
-| Flag | Description |
-|------|-------------|
-| `--fields f1,f2` | Limit response fields |
-| `--limit N` | Max results (on list commands) |
-| `--json` | JSON output (default) |
-| `--compact` | One-line-per-record output |
-| `--raw` | Raw API response |
+- `--compact` for one JSON object per line
+- `--raw` for single-line JSON of the full returned payload
+- `--fields` to limit displayed fields on structured results
 
 ## Write Safety
 
-Commands that modify data (`schedule`, `trigger`, `add`, `remove`) require `--execute`. Without it, they run in dry-run mode.
+Commands that modify data default to dry-run mode and require `--execute` to actually make changes:
+
+- `mrkto smart-campaign schedule`
+- `mrkto smart-campaign trigger`
+- `mrkto static-list add`
+- `mrkto static-list remove`
 
 ## Agent Skill
 
-Ships with an agent skill compatible with Claude Code, Cursor, Codex, and [37+ agents](https://github.com/vercel-labs/skills#supported-agents).
+The repo still ships with a skills-based installer for supported coding agents:
 
 ```bash
-# Install via npx skills (any supported agent)
-npx skills add itodca/marketo-cli
-
-# Or install via mrkto directly
-mrkto skill install              # Install for all projects
-mrkto skill install --scope project  # Install for current project only
+mrkto skill install
+mrkto skill install --scope project
 ```
+
+## Release Automation
+
+- CI runs tests, compile checks, and package builds on pushes and pull requests
+- GitHub Releases build macOS and Linux binaries on `v*` tags
+- PyPI publishing is prepared through GitHub Actions trusted publishing once the PyPI project is configured
+
+## Source Contracts
+
+The CLI is implemented against Adobe's published Marketo OpenAPI specs:
+
+- [`swagger-mapi.json`](https://raw.githubusercontent.com/AdobeDocs/marketo-apis/main/static/swagger-mapi.json)
+- [`swagger-asset.json`](https://raw.githubusercontent.com/AdobeDocs/marketo-apis/main/static/swagger-asset.json)
+- [`swagger-identity.json`](https://raw.githubusercontent.com/AdobeDocs/marketo-apis/main/static/swagger-identity.json)
+- [`swagger-user.json`](https://raw.githubusercontent.com/AdobeDocs/marketo-apis/main/static/swagger-user.json)
+
+## Binary Releases
+
+Build a release artifact locally with PyInstaller:
+
+```bash
+python3 -m pip install '.[build]'
+./scripts/build-binary.sh
+```
+
+This creates assets under `dist/releases/` using the installer's expected naming scheme:
+
+- `mrkto-darwin-arm64.tar.gz`
+- `mrkto-darwin-x64.tar.gz`
+- `mrkto-linux-arm64.tar.gz`
+- `mrkto-linux-x64.tar.gz`
+
+Each archive is accompanied by a `.sha256` checksum file.
 
 ## License
 

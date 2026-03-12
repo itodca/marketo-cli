@@ -1,22 +1,24 @@
 """Company lookups."""
 
+from __future__ import annotations
 
-def list_companies(client, filter_type="company", filter_values="", fields=None, limit=None):
-    """List companies by filter."""
+
+def list_companies(
+    client,
+    *,
+    filter_type: str,
+    filter_values: str,
+    fields: str | None = None,
+    limit: int | None = None,
+) -> dict:
     params = {
         "filterType": filter_type,
         "filterValues": filter_values,
     }
     if fields:
         params["fields"] = fields
-    result = client.get("/v1/companies.json", params=params)
-    results = result.get("result", [])
-    if limit:
-        results = results[:limit]
-    return results
+    return client.get_all_pages("/v1/companies.json", params=params, limit=limit)
 
 
-def describe_company(client):
-    """Return company field schema."""
-    result = client.get("/v1/companies/describe.json")
-    return result.get("result", [])
+def describe_company(client) -> dict:
+    return client.get("/v1/companies/describe.json")

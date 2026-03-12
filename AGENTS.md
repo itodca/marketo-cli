@@ -1,0 +1,39 @@
+# marketo-cli Agent Guide
+
+This repo ships `mrkto`, a Typer-based Marketo CLI.
+
+## Source Of Truth
+- Command behavior: `src/mrkto/cli.py`
+- Resource wiring: `src/mrkto/resources/`
+- User-facing contract: `README.md`
+- Agent usage examples: `skills/mrkto/SKILL.md`
+
+## Project Rules
+- Keep the CLI noun/action shape stable
+- Use singular top-level nouns and explicit Marketo concepts:
+  - `lead`, `activity`, `company`, `program`
+  - `smart-campaign`, `static-list`, `smart-list`
+- Preserve `mrkto api ...` as the fallback for unsupported endpoints
+- Default output is JSON; do not replace structured output with prose
+- Mutating commands must remain dry-run-first and require `--execute`
+
+## Development
+- Install deps: `uv sync` or `uv run ...`
+- Run tests: `uv run pytest`
+- Validate syntax: `python3 -m compileall src tests`
+- Build binary artifact: `./scripts/build-binary.sh`
+
+## Sync Points
+- If you change commands, update:
+  - `README.md`
+  - `CLAUDE.md`
+  - `skills/mrkto/SKILL.md`
+- If you change release artifact names or install locations, update:
+  - `install.sh`
+  - `scripts/build-binary.sh`
+  - `.github/workflows/release.yml`
+
+## Avoid
+- Reintroducing the old `argparse`-era command names like `campaign` or `list`
+- Adding hidden prompts to mutating commands
+- Making the binary installer the only supported install path; keep source install viable
