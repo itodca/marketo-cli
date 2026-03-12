@@ -31,7 +31,8 @@ curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh 
 Other install options:
 
 - download the release artifact directly from GitHub Releases
-- install from source with `pipx install git+https://github.com/itodca/marketo-cli.git`
+- install from PyPI with `pipx install marketo-cli`
+- install the latest main branch with `pipx install git+https://github.com/itodca/marketo-cli.git`
 - install from a checkout with `pip install .`
 
 ## Quick Start
