@@ -86,6 +86,143 @@ func (client *Client) Delete(path string, params map[string]any, body map[string
 	return client.request(http.MethodDelete, path, params, body)
 }
 
+func (client *Client) GetAllPages(path string, params map[string]any, limit int, batchSize int) (map[string]any, error) {
+	pageParams := cloneParams(params)
+	if pageParams == nil {
+		pageParams = map[string]any{}
+	}
+
+	if batchSize <= 0 && limit > 0 {
+		batchSize = limit
+	}
+	if batchSize > 0 {
+		if batchSize > 300 {
+			batchSize = 300
+		}
+		pageParams["batchSize"] = batchSize
+	}
+
+	results := []any{}
+	warnings := []any{}
+	requestID := ""
+
+	for {
+		data, err := client.Get(path, pageParams)
+		if err != nil {
+			return nil, err
+		}
+
+		if requestID == "" {
+			if value, ok := data["requestId"].(string); ok {
+				requestID = value
+			}
+		}
+		if batchWarnings, ok := data["warnings"].([]any); ok {
+			warnings = append(warnings, batchWarnings...)
+		}
+		if batchResults, ok := data["result"].([]any); ok {
+			results = append(results, batchResults...)
+		}
+
+		if limit > 0 && len(results) >= limit {
+			results = results[:limit]
+			break
+		}
+
+		nextPageToken, _ := data["nextPageToken"].(string)
+		if nextPageToken == "" {
+			break
+		}
+
+		pageParams["nextPageToken"] = nextPageToken
+	}
+
+	response := map[string]any{
+		"success": true,
+		"result":  results,
+	}
+	if requestID != "" {
+		response["requestId"] = requestID
+	}
+	if len(warnings) > 0 {
+		response["warnings"] = warnings
+	}
+
+	return response, nil
+}
+
+func (client *Client) GetAllOffsetPages(path string, params map[string]any, limit int, pageSize int) (map[string]any, error) {
+	if pageSize <= 0 {
+		pageSize = 200
+	}
+	if pageSize > 200 {
+		pageSize = 200
+	}
+
+	pageParams := cloneParams(params)
+	if pageParams == nil {
+		pageParams = map[string]any{}
+	}
+	offset := intValue(pageParams["offset"], 0)
+
+	results := []any{}
+	warnings := []any{}
+	requestID := ""
+
+	for {
+		remaining := 0
+		if limit > 0 {
+			remaining = limit - len(results)
+			if remaining <= 0 {
+				break
+			}
+		}
+
+		currentPageSize := pageSize
+		if limit > 0 && remaining < currentPageSize {
+			currentPageSize = remaining
+		}
+
+		pageParams["offset"] = offset
+		pageParams["maxReturn"] = currentPageSize
+
+		data, err := client.Get(path, pageParams)
+		if err != nil {
+			return nil, err
+		}
+
+		if requestID == "" {
+			if value, ok := data["requestId"].(string); ok {
+				requestID = value
+			}
+		}
+		if batchWarnings, ok := data["warnings"].([]any); ok {
+			warnings = append(warnings, batchWarnings...)
+		}
+		pageResults, _ := data["result"].([]any)
+		results = append(results, pageResults...)
+
+		if len(pageResults) < currentPageSize {
+			break
+		}
+
+		offset += len(pageResults)
+	}
+
+	response := map[string]any{
+		"success": true,
+		"result":  results,
+	}
+	if requestID != "" {
+		response["requestId"] = requestID
+	}
+	if len(warnings) > 0 {
+		response["warnings"] = warnings
+	}
+
+	return response, nil
+}
+
 func (client *Client) request(method, path string, params map[string]any, body map[string]any) (map[string]any, error) {
 	attempts := 0
 	maxAttempts := 1 + client.maxRetries()
@@ -313,6 +450,18 @@ func appendQueryValue(values url.Values, key string, value any) {
 	}
 
 	values.Add(key, fmt.Sprint(value))
+}
+
+func cloneParams(values map[string]any) map[string]any {
+	if len(values) == 0 {
+		return nil
+	}
+
+	cloned := make(map[string]any, len(values))
+	for key, value := range values {
+		cloned[key] = value
+	}
+	return cloned
 }
 
 func extractMarketoError(data map[string]any) (string, string) {

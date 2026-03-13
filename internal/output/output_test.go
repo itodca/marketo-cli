@@ -50,6 +50,20 @@ func TestPayloadUnwrapsSuccessEnvelopeUnlessRaw(t *testing.T) {
 	}
 }
 
+func TestPayloadLeavesFailedEnvelopeWrapped(t *testing.T) {
+	t.Parallel()
+
+	data := map[string]any{
+		"success": false,
+		"result":  []any{map[string]any{"id": 1}},
+	}
+
+	payload := Payload(data, FormatJSON)
+	if _, ok := payload.(map[string]any); !ok {
+		t.Fatalf("expected failed envelope to stay wrapped, got %#v", payload)
+	}
+}
+
 func TestPrintResultFieldFilteringLeavesNonObjectItemsUntouched(t *testing.T) {
 	t.Parallel()
 

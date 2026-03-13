@@ -260,6 +260,105 @@ func TestClientDeleteSupportsQueryAndJSONBody(t *testing.T) {
 	}
 }
 
+func TestClientGetAllPagesFollowsNextPageToken(t *testing.T) {
+	t.Parallel()
+
+	var queries []string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/identity/oauth/token":
+			_ = json.NewEncoder(writer).Encode(map[string]any{"access_token": "tok123", "expires_in": 3600})
+		case "/rest/v1/leads.json":
+			queries = append(queries, request.URL.RawQuery)
+			if request.URL.Query().Get("nextPageToken") == "" {
+				_ = json.NewEncoder(writer).Encode(map[string]any{
+					"success":       true,
+					"requestId":     "abc",
+					"nextPageToken": "next-token",
+					"result":        []map[string]any{{"id": 1}},
+				})
+				return
+			}
+			_ = json.NewEncoder(writer).Encode(map[string]any{
+				"success": true,
+				"result":  []map[string]any{{"id": 2}},
+			})
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	client := New(testConfig(server.URL, "default"))
+	client.TokenCache = NewTokenCache(t.TempDir())
+
+	result, err := client.GetAllPages("/v1/leads.json", map[string]any{"filterType": "email", "filterValues": "user@example.com"}, 0, 0)
+	if err != nil {
+		t.Fatalf("GetAllPages returned error: %v", err)
+	}
+
+	records, ok := result["result"].([]any)
+	if !ok || len(records) != 2 {
+		t.Fatalf("unexpected result payload: %#v", result)
+	}
+	if queries[0] != "batchSize=300&filterType=email&filterValues=user%40example.com" && queries[0] != "filterType=email&filterValues=user%40example.com" {
+		t.Fatalf("unexpected first query: %q", queries[0])
+	}
+	if queries[1] != "filterType=email&filterValues=user%40example.com&nextPageToken=next-token" && queries[1] != "batchSize=300&filterType=email&filterValues=user%40example.com&nextPageToken=next-token" {
+		t.Fatalf("unexpected second query: %q", queries[1])
+	}
+}
+
+func TestClientGetAllOffsetPagesFollowsOffsetPagination(t *testing.T) {
+	t.Parallel()
+
+	var queries []string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/identity/oauth/token":
+			_ = json.NewEncoder(writer).Encode(map[string]any{"access_token": "tok123", "expires_in": 3600})
+		case "/rest/asset/v1/programs.json":
+			queries = append(queries, request.URL.RawQuery)
+			if request.URL.Query().Get("offset") == "0" {
+				_ = json.NewEncoder(writer).Encode(map[string]any{
+					"success": true,
+					"result":  []map[string]any{{"id": 1}, {"id": 2}},
+				})
+				return
+			}
+			_ = json.NewEncoder(writer).Encode(map[string]any{
+				"success": true,
+				"result":  []map[string]any{{"id": 3}},
+			})
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	client := New(testConfig(server.URL, "default"))
+	client.TokenCache = NewTokenCache(t.TempDir())
+
+	result, err := client.GetAllOffsetPages("/asset/v1/programs.json", nil, 3, 2)
+	if err != nil {
+		t.Fatalf("GetAllOffsetPages returned error: %v", err)
+	}
+
+	records, ok := result["result"].([]any)
+	if !ok || len(records) != 3 {
+		t.Fatalf("unexpected result payload: %#v", result)
+	}
+	if len(queries) != 2 {
+		t.Fatalf("expected two offset requests, got %#v", queries)
+	}
+	if queries[0] != "maxReturn=2&offset=0" {
+		t.Fatalf("unexpected first query: %q", queries[0])
+	}
+	if queries[1] != "maxReturn=1&offset=2" {
+		t.Fatalf("unexpected second query: %q", queries[1])
+	}
+}
+
 func TestClientReturnsHelpfulErrorForInvalidJSONResponse(t *testing.T) {
 	t.Parallel()
 

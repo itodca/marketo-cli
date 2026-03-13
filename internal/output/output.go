@@ -43,7 +43,8 @@ func Payload(data any, format Format) any {
 	}
 
 	if envelope, ok := data.(map[string]any); ok {
-		if _, hasSuccess := envelope["success"]; hasSuccess {
+		success, hasSuccess := envelope["success"].(bool)
+		if hasSuccess && success {
 			if result, hasResult := envelope["result"]; hasResult {
 				return result
 			}

@@ -30,7 +30,15 @@ func NewRootCmd(runtime *Runtime) *cobra.Command {
 	flags.BoolVar(&options.Raw, "raw", false, "Single-line JSON output for the full returned payload.")
 
 	rootCmd.AddCommand(newAuthCmd(runtime, options))
+	rootCmd.AddCommand(newActivityCmd(runtime, options))
 	rootCmd.AddCommand(newAPICmd(runtime, options))
+	rootCmd.AddCommand(newCompanyCmd(runtime, options))
+	rootCmd.AddCommand(newLeadCmd(runtime, options))
+	rootCmd.AddCommand(newProgramCmd(runtime, options))
+	rootCmd.AddCommand(newSmartCampaignCmd(runtime, options))
+	rootCmd.AddCommand(newSmartListCmd(runtime, options))
+	rootCmd.AddCommand(newStaticListCmd(runtime, options))
+	rootCmd.AddCommand(newStatsCmd(runtime, options))
 	rootCmd.AddCommand(newSetupCmd())
 	rootCmd.AddCommand(newVersionCmd(runtime))
 
