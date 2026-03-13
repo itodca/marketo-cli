@@ -34,12 +34,16 @@ detect_arch() {
 
 checksum_file() {
     local file="$1"
+    local dir
+    local base
+    dir="$(dirname "$file")"
+    base="$(basename "$file")"
     if command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$file" > "${file}.sha256"
+        (cd "$dir" && shasum -a 256 "$base" > "${base}.sha256")
         return
     fi
     if command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$file" > "${file}.sha256"
+        (cd "$dir" && sha256sum "$base" > "${base}.sha256")
         return
     fi
     error "No checksum tool found"

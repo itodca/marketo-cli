@@ -205,14 +205,27 @@ print_manual_path_help() {
 verify_checksum() {
     local workdir="$1"
     local checksum_file="$2"
+    local normalized_file="${workdir}/${checksum_file}.normalized"
+
+    # Older releases wrote the archive path into the checksum file. Normalize it
+    # so verification works after downloading into a temporary directory.
+    awk '
+        NF >= 2 {
+            file = $2
+            sub(/^.*\//, "", file)
+            print $1 "  " file
+            next
+        }
+        { print }
+    ' "${workdir}/${checksum_file}" > "${normalized_file}"
 
     if command -v shasum >/dev/null 2>&1; then
-        (cd "$workdir" && shasum -a 256 -c "$checksum_file")
+        (cd "$workdir" && shasum -a 256 -c "$(basename "$normalized_file")")
         return
     fi
 
     if command -v sha256sum >/dev/null 2>&1; then
-        (cd "$workdir" && sha256sum -c "$checksum_file")
+        (cd "$workdir" && sha256sum -c "$(basename "$normalized_file")")
         return
     fi
 
