@@ -27,18 +27,22 @@ curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh 
 
 The installer:
 
-- downloads the matching binary from GitHub Releases
-- installs it to `~/.local/bin` by default
+- downloads the matching release bundle from GitHub Releases
+- installs the app bundle under `~/.local/share/mrkto` by default
+- symlinks `mrkto` into `~/.local/bin` by default
 - adds that directory to your shell `PATH` if needed
 
 Useful options:
 
 ```bash
 # Install a specific release tag
-curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.2
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.3
 
 # Install somewhere else and leave PATH alone
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --install-dir "$HOME/bin" --no-modify-path
+
+# Uninstall the app bundle and command symlink
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --uninstall
 ```
 
 Other install options:
@@ -278,7 +282,7 @@ python3 -m pip install '.[build]'
 ./scripts/build-binary.sh
 ```
 
-This creates assets under `dist/releases/` using the installer's expected naming scheme:
+This creates assets under `dist/releases/` using the installer's expected naming scheme. Each archive contains the `mrkto/` app bundle used by the installer:
 
 - `mrkto-darwin-arm64.tar.gz`
 - `mrkto-darwin-x64.tar.gz`

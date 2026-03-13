@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3] — 2026-03-13
+
+Binary performance release.
+
+- Switch GitHub release artifacts from PyInstaller `--onefile` to `--onedir` bundles to avoid multi-second self-extraction on every run
+- Update the installer to place the app bundle under `~/.local/share/mrkto` and symlink `mrkto` into `~/.local/bin`
+- Add an uninstall path to the installer for removing the app bundle and command symlink
+- Defer importing resource modules and the HTTP client until commands actually run, reducing startup work for lightweight commands like `--help`
+
 ## [0.1.2] — 2026-03-12
 
 Documentation-focused release.

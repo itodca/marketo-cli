@@ -63,7 +63,7 @@ info "Building ${BINARY_NAME} with PyInstaller"
 "$PYTHON_BIN" -m PyInstaller \
     --noconfirm \
     --clean \
-    --onefile \
+    --onedir \
     --name "$BINARY_NAME" \
     --paths "${ROOT}/src" \
     --distpath "${BUILD_ROOT}/dist" \

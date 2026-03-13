@@ -6,7 +6,9 @@ REPO="marketo-cli"
 BINARY="mrkto"
 VERSION="${MRKTO_VERSION:-latest}"
 INSTALL_DIR="${MRKTO_INSTALL_DIR:-$HOME/.local/bin}"
+APP_DIR="${MRKTO_APP_DIR:-$HOME/.local/share/mrkto}"
 MODIFY_PATH=1
+UNINSTALL=0
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,15 +21,17 @@ error() { echo -e "${RED}XX${NC} $1" >&2; exit 1; }
 
 usage() {
     cat <<EOF
-Install the mrkto binary from GitHub Releases.
+Install the mrkto app bundle from GitHub Releases.
 
 Usage:
   curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash
-  curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash -s -- --version v0.1.2
+  curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash -s -- --version v0.1.3
 
 Options:
   --version <tag>       Release tag to install. Default: latest
   --install-dir <dir>   Install directory. Default: ${INSTALL_DIR}
+  --app-dir <dir>       App bundle directory. Default: ${APP_DIR}
+  --uninstall           Remove the installed app bundle and command symlink
   --no-modify-path      Do not update your shell startup file
   --help                Show this help
 EOF
@@ -48,6 +52,15 @@ while [ $# -gt 0 ]; do
             [ $# -ge 2 ] || error "--install-dir requires a value"
             INSTALL_DIR="$2"
             shift 2
+            ;;
+        --app-dir)
+            [ $# -ge 2 ] || error "--app-dir requires a value"
+            APP_DIR="$2"
+            shift 2
+            ;;
+        --uninstall)
+            UNINSTALL=1
+            shift
             ;;
         --no-modify-path)
             MODIFY_PATH=0
@@ -232,8 +245,65 @@ verify_checksum() {
     warn "No checksum tool found; skipping checksum verification"
 }
 
+require_safe_dir() {
+    case "$1" in
+        ""|"/")
+            error "Refusing to operate on unsafe directory path: $1"
+            ;;
+    esac
+}
+
+install_app_bundle() {
+    local source_dir="$1"
+
+    [ -f "${source_dir}/${BINARY}" ] || error "Extracted app bundle did not contain ${BINARY}"
+    require_safe_dir "$APP_DIR"
+
+    mkdir -p "$INSTALL_DIR"
+    mkdir -p "$(dirname "$APP_DIR")"
+
+    rm -rf "$APP_DIR"
+    mv "$source_dir" "$APP_DIR"
+
+    if [ -d "${INSTALL_DIR}/${BINARY}" ] && [ ! -L "${INSTALL_DIR}/${BINARY}" ]; then
+        error "Cannot overwrite directory at ${INSTALL_DIR}/${BINARY}"
+    fi
+
+    rm -f "${INSTALL_DIR}/${BINARY}"
+    ln -s "${APP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+
+    info "Installed ${BINARY} bundle to ${APP_DIR}"
+    info "Linked ${INSTALL_DIR}/${BINARY} -> ${APP_DIR}/${BINARY}"
+}
+
+uninstall_app() {
+    require_safe_dir "$APP_DIR"
+
+    if [ -d "${INSTALL_DIR}/${BINARY}" ] && [ ! -L "${INSTALL_DIR}/${BINARY}" ]; then
+        error "Refusing to remove directory at ${INSTALL_DIR}/${BINARY}"
+    fi
+
+    if [ -e "${INSTALL_DIR}/${BINARY}" ] || [ -L "${INSTALL_DIR}/${BINARY}" ]; then
+        rm -f "${INSTALL_DIR}/${BINARY}"
+        info "Removed ${INSTALL_DIR}/${BINARY}"
+    fi
+
+    if [ -e "$APP_DIR" ] || [ -L "$APP_DIR" ]; then
+        rm -rf "$APP_DIR"
+        info "Removed ${APP_DIR}"
+    fi
+
+    echo ""
+    info "mrkto uninstalled"
+    exit 0
+}
+
 require_cmd curl
 require_cmd tar
+
+if [ "$UNINSTALL" -eq 1 ]; then
+    uninstall_app
+fi
 
 OS="$(detect_os)"
 ARCH="$(detect_arch)"
@@ -257,15 +327,9 @@ verify_checksum "$TMPDIR" "$CHECKSUM_NAME"
 info "Extracting ${ARCHIVE_NAME}"
 tar -xzf "${TMPDIR}/${ARCHIVE_NAME}" -C "$TMPDIR"
 
-BIN_PATH="${TMPDIR}/${BINARY}"
-if [ ! -f "$BIN_PATH" ]; then
-    BIN_PATH="$(find "$TMPDIR" -type f -name "$BINARY" | head -n 1)"
-fi
-[ -n "${BIN_PATH:-}" ] && [ -f "$BIN_PATH" ] || error "Could not find ${BINARY} in the downloaded archive"
-
-mkdir -p "$INSTALL_DIR"
-install -m 0755 "$BIN_PATH" "${INSTALL_DIR}/${BINARY}"
-info "Installed ${BINARY} to ${INSTALL_DIR}/${BINARY}"
+ARTIFACT_PATH="${TMPDIR}/${BINARY}"
+[ -d "$ARTIFACT_PATH" ] || error "Expected ${ARCHIVE_NAME} to contain a ${BINARY}/ app bundle"
+install_app_bundle "$ARTIFACT_PATH"
 
 "${INSTALL_DIR}/${BINARY}" --help >/dev/null 2>&1 || error "Installed binary did not start correctly"
 

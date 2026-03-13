@@ -5,16 +5,16 @@ from __future__ import annotations
 import json
 import sys
 from enum import Enum
+from importlib import import_module
 from pathlib import Path
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any, Callable, TYPE_CHECKING
 
 import typer
 
-from mrkto.client import MarketoAPIError, MarketoClient
-from mrkto.config import load_config
 from mrkto.output import print_error, print_result
-from mrkto.resources import activity, api, auth, company, program, skill, smart_campaign, smart_list, static_list, stats
-from mrkto.resources import lead as lead_resource
+
+if TYPE_CHECKING:
+    from mrkto.client import MarketoClient
 
 app = typer.Typer(
     help="Marketo REST API CLI.",
@@ -48,6 +48,35 @@ app.add_typer(api_app, name="api")
 app.add_typer(skill_app, name="skill")
 
 
+class _LazyModule:
+    def __init__(self, module_name: str):
+        self._module_name = module_name
+        self._module: Any | None = None
+
+    def _load(self) -> Any:
+        if self._module is None:
+            self._module = import_module(self._module_name)
+        return self._module
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._load(), name)
+
+
+client_module = _LazyModule("mrkto.client")
+config_module = _LazyModule("mrkto.config")
+auth = _LazyModule("mrkto.resources.auth")
+lead_resource = _LazyModule("mrkto.resources.lead")
+activity = _LazyModule("mrkto.resources.activity")
+smart_campaign = _LazyModule("mrkto.resources.smart_campaign")
+static_list = _LazyModule("mrkto.resources.static_list")
+smart_list = _LazyModule("mrkto.resources.smart_list")
+company = _LazyModule("mrkto.resources.company")
+program = _LazyModule("mrkto.resources.program")
+stats = _LazyModule("mrkto.resources.stats")
+api = _LazyModule("mrkto.resources.api")
+skill = _LazyModule("mrkto.resources.skill")
+
+
 class OutputFormat(str, Enum):
     json = "json"
     compact = "compact"
@@ -64,7 +93,7 @@ ExecuteFlag = Annotated[bool, typer.Option("--execute", help="Actually perform t
 
 
 def get_client(profile: str | None) -> MarketoClient:
-    return MarketoClient(load_config(profile=profile))
+    return client_module.MarketoClient(config_module.load_config(profile=profile))
 
 
 def parse_fields(fields: str | None) -> list[str] | None:
@@ -136,6 +165,7 @@ def run_action(
     compact_output: bool,
     raw_output: bool,
 ) -> None:
+    marketo_api_error = client_module.MarketoAPIError
     try:
         fmt = resolve_output_format(json_output, compact_output, raw_output)
         result = action()
@@ -145,7 +175,7 @@ def run_action(
     except (ValueError, KeyError, json.JSONDecodeError) as exc:
         print_error(str(exc))
         raise typer.Exit(1) from exc
-    except MarketoAPIError as exc:
+    except marketo_api_error as exc:
         print_error(f"[{exc.code}] {exc.message}")
         raise typer.Exit(1) from exc
 
