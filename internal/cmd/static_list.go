@@ -26,10 +26,10 @@ func newStaticListCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 
 func newStaticListListCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 	var (
-		name          string
-		programName   string
-		workspaceName string
-		limit         int
+		name       string
+		folderID   int
+		folderType string
+		limit      int
 	)
 
 	cmd := &cobra.Command{
@@ -41,18 +41,20 @@ func newStaticListListCmd(runtime *Runtime, options *RootOptions) *cobra.Command
 				return err
 			}
 
-			params := map[string]any{}
+			var result map[string]any
 			if name != "" {
-				params["name"] = name
+				result, err = apiClient.Get("/asset/v1/staticList/byName.json", map[string]any{"name": name})
+			} else {
+				params := map[string]any{}
+				folder, err := folderValue(folderID, folderType)
+				if err != nil {
+					return err
+				}
+				if folder != "" {
+					params["folder"] = folder
+				}
+				result, err = apiClient.GetAllOffsetPages("/asset/v1/staticLists.json", paramsOrNil(params), limit, 200)
 			}
-			if programName != "" {
-				params["programName"] = programName
-			}
-			if workspaceName != "" {
-				params["workspaceName"] = workspaceName
-			}
-
-			result, err := apiClient.GetAllPages("/v1/lists.json", paramsOrNil(params), limit, 0)
 			if err != nil {
 				return err
 			}
@@ -62,9 +64,9 @@ func newStaticListListCmd(runtime *Runtime, options *RootOptions) *cobra.Command
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&name, "name", "", "Filter by exact static list name.")
-	flags.StringVar(&programName, "program", "", "Filter by program name.")
-	flags.StringVar(&workspaceName, "workspace", "", "Filter by workspace name.")
+	flags.StringVar(&name, "name", "", "Lookup by exact static list name.")
+	flags.IntVar(&folderID, "folder-id", 0, "Parent folder or program id.")
+	flags.StringVar(&folderType, "folder-type", "", "Folder type: Folder or Program.")
 	flags.IntVar(&limit, "limit", 0, "Maximum number of records to return.")
 
 	return cmd
@@ -77,14 +79,14 @@ func newStaticListGetCmd(runtime *Runtime, options *RootOptions) *cobra.Command 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			apiClient, err := loadClient(runtime, options.Profile)
-			if err != nil {
-				return err
-			}
+				if err != nil {
+					return err
+				}
 
-			result, err := apiClient.Get("/v1/lists/"+args[0]+".json", nil)
-			if err != nil {
-				return err
-			}
+				result, err := apiClient.Get("/asset/v1/staticList/"+args[0]+".json", nil)
+				if err != nil {
+					return err
+				}
 
 			return writeResult(runtime, options, result)
 		},
