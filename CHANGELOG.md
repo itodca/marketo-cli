@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.4] — 2026-03-13
+
+Binary packaging fix release.
+
+- Move PyInstaller lazy-import handling into a dedicated repo hook instead of an inline build flag
+- Include lazily imported CLI modules explicitly so bundled commands like `auth check` work correctly
+- Strengthen the build smoke test so real commands fail the build if the bundle is missing dynamic imports
+
 ## [0.1.3] — 2026-03-13
 
 Binary performance release.

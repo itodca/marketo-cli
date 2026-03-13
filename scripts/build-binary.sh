@@ -65,11 +65,28 @@ info "Building ${BINARY_NAME} with PyInstaller"
     --clean \
     --onedir \
     --name "$BINARY_NAME" \
+    --additional-hooks-dir "${ROOT}/pyinstaller/hooks" \
     --paths "${ROOT}/src" \
     --distpath "${BUILD_ROOT}/dist" \
     --workpath "${BUILD_ROOT}/work" \
     --specpath "${BUILD_ROOT}/spec" \
     "${ROOT}/src/mrkto/__main__.py"
+
+info "Smoke testing bundled ${BINARY_NAME}"
+"${BUILD_ROOT}/dist/${BINARY_NAME}/${BINARY_NAME}" auth list >/dev/null
+AUTH_CHECK_OUTPUT="$(
+    MARKETO_MUNCHKIN_ID=test \
+    MARKETO_CLIENT_ID=test \
+    MARKETO_CLIENT_SECRET=test \
+    MARKETO_IDENTITY_URL=http://127.0.0.1:9/identity \
+    MARKETO_REST_URL=http://127.0.0.1:9/rest \
+    "${BUILD_ROOT}/dist/${BINARY_NAME}/${BINARY_NAME}" auth check 2>&1 >/dev/null || true
+)"
+case "$AUTH_CHECK_OUTPUT" in
+    *"ModuleNotFoundError"*|*"Failed to execute script"*)
+        error "Bundled ${BINARY_NAME} is missing lazy imports"
+        ;;
+esac
 
 info "Packaging ${ASSET_NAME}"
 tar -C "${BUILD_ROOT}/dist" -czf "${OUTPUT_DIR}/${ASSET_NAME}" "$BINARY_NAME"
