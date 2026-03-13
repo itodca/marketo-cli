@@ -249,7 +249,8 @@ The repo still ships with a skills-based installer for supported coding agents:
 
 ```bash
 mrkto skill install
-mrkto skill install --scope project
+mrkto skill install --global
+mrkto skill uninstall
 ```
 
 ## More Docs

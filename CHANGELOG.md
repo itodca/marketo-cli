@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.5] — 2026-03-13
+
+Skill command UX release.
+
+- Make `mrkto skill install` default to project-local installation instead of implicitly adding `--global`
+- Replace the old `--scope` flag with an explicit `--global` flag
+- Add `mrkto skill uninstall` with matching `--global` behavior
+- Print the full underlying `npx skills ...` command when Node tooling is missing
+
 ## [0.1.4] — 2026-03-13
 
 Binary packaging fix release.
