@@ -72,3 +72,31 @@ def test_api_post_rejects_body_and_input_together(monkeypatch, tmp_path):
 
     assert result.exit_code == 1
     assert json.loads(result.stderr)["error"] == "Use either --body or --input, not both"
+
+
+def test_skill_install_defaults_to_project_scope(monkeypatch):
+    calls = {}
+
+    def fake_install_skill(*, global_install=False):
+        calls["global_install"] = global_install
+
+    monkeypatch.setattr("mrkto.cli.skill.install_skill", fake_install_skill)
+
+    result = runner.invoke(app, ["skill", "install"])
+
+    assert result.exit_code == 0
+    assert calls == {"global_install": False}
+
+
+def test_skill_uninstall_can_target_global_scope(monkeypatch):
+    calls = {}
+
+    def fake_uninstall_skill(*, global_install=False):
+        calls["global_install"] = global_install
+
+    monkeypatch.setattr("mrkto.cli.skill.uninstall_skill", fake_uninstall_skill)
+
+    result = runner.invoke(app, ["skill", "uninstall", "--global"])
+
+    assert result.exit_code == 0
+    assert calls == {"global_install": True}

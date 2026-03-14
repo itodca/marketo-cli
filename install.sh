@@ -6,7 +6,8 @@ REPO="marketo-cli"
 BINARY="mrkto"
 VERSION="${MRKTO_VERSION:-latest}"
 INSTALL_DIR="${MRKTO_INSTALL_DIR:-$HOME/.local/bin}"
-APP_DIR="${MRKTO_APP_DIR:-$HOME/.local/share/mrkto}"
+LEGACY_APP_DIR="${MRKTO_LEGACY_APP_DIR:-$HOME/.local/share/mrkto}"
+RELEASE_BASE_URL="${MRKTO_RELEASE_BASE_URL:-}"
 MODIFY_PATH=1
 UNINSTALL=0
 
@@ -21,17 +22,16 @@ error() { echo -e "${RED}XX${NC} $1" >&2; exit 1; }
 
 usage() {
     cat <<EOF
-Install the mrkto app bundle from GitHub Releases.
+Install the mrkto native binary from GitHub Releases.
 
 Usage:
   curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash
-  curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash -s -- --version v0.1.4
+  curl -fsSL https://raw.githubusercontent.com/${OWNER}/${REPO}/main/install.sh | bash -s -- --version vX.Y.Z
 
 Options:
   --version <tag>       Release tag to install. Default: latest
   --install-dir <dir>   Install directory. Default: ${INSTALL_DIR}
-  --app-dir <dir>       App bundle directory. Default: ${APP_DIR}
-  --uninstall           Remove the installed app bundle and command symlink
+  --uninstall           Remove the installed command and legacy app bundle
   --no-modify-path      Do not update your shell startup file
   --help                Show this help
 EOF
@@ -51,11 +51,6 @@ while [ $# -gt 0 ]; do
         --install-dir)
             [ $# -ge 2 ] || error "--install-dir requires a value"
             INSTALL_DIR="$2"
-            shift 2
-            ;;
-        --app-dir)
-            [ $# -ge 2 ] || error "--app-dir requires a value"
-            APP_DIR="$2"
             shift 2
             ;;
         --uninstall)
@@ -93,6 +88,11 @@ detect_arch() {
 }
 
 release_base_url() {
+    if [ -n "$RELEASE_BASE_URL" ]; then
+        echo "$RELEASE_BASE_URL"
+        return
+    fi
+
     if [ "$VERSION" = "latest" ]; then
         echo "https://github.com/${OWNER}/${REPO}/releases/latest/download"
     else
@@ -218,27 +218,18 @@ print_manual_path_help() {
 verify_checksum() {
     local workdir="$1"
     local checksum_file="$2"
-    local normalized_file="${workdir}/${checksum_file}.normalized"
+    local archive_name="$3"
+    local filtered_file="${workdir}/${archive_name}.sha256"
 
-    # Older releases wrote the archive path into the checksum file. Normalize it
-    # so verification works after downloading into a temporary directory.
-    awk '
-        NF >= 2 {
-            file = $2
-            sub(/^.*\//, "", file)
-            print $1 "  " file
-            next
-        }
-        { print }
-    ' "${workdir}/${checksum_file}" > "${normalized_file}"
+    grep -E "[[:space:]]${archive_name}\$" "${workdir}/${checksum_file}" > "${filtered_file}" || error "Could not find checksum for ${archive_name}"
 
     if command -v shasum >/dev/null 2>&1; then
-        (cd "$workdir" && shasum -a 256 -c "$(basename "$normalized_file")")
+        (cd "$workdir" && shasum -a 256 -c "$(basename "$filtered_file")")
         return
     fi
 
     if command -v sha256sum >/dev/null 2>&1; then
-        (cd "$workdir" && sha256sum -c "$(basename "$normalized_file")")
+        (cd "$workdir" && sha256sum -c "$(basename "$filtered_file")")
         return
     fi
 
@@ -253,31 +244,33 @@ require_safe_dir() {
     esac
 }
 
-install_app_bundle() {
-    local source_dir="$1"
+install_binary() {
+    local extract_dir="$1"
+    local artifact_path
 
-    [ -f "${source_dir}/${BINARY}" ] || error "Extracted app bundle did not contain ${BINARY}"
-    require_safe_dir "$APP_DIR"
+    artifact_path="$(find "${extract_dir}" -type f -name "${BINARY}" | head -n 1)"
+    [ -n "$artifact_path" ] || error "Extracted archive did not contain ${BINARY}"
 
     mkdir -p "$INSTALL_DIR"
-    mkdir -p "$(dirname "$APP_DIR")"
-
-    rm -rf "$APP_DIR"
-    mv "$source_dir" "$APP_DIR"
 
     if [ -d "${INSTALL_DIR}/${BINARY}" ] && [ ! -L "${INSTALL_DIR}/${BINARY}" ]; then
         error "Cannot overwrite directory at ${INSTALL_DIR}/${BINARY}"
     fi
 
     rm -f "${INSTALL_DIR}/${BINARY}"
-    ln -s "${APP_DIR}/${BINARY}" "${INSTALL_DIR}/${BINARY}"
+    install -m 0755 "${artifact_path}" "${INSTALL_DIR}/${BINARY}"
 
-    info "Installed ${BINARY} bundle to ${APP_DIR}"
-    info "Linked ${INSTALL_DIR}/${BINARY} -> ${APP_DIR}/${BINARY}"
+    info "Installed ${INSTALL_DIR}/${BINARY}"
+
+    if [ -d "$LEGACY_APP_DIR" ]; then
+        warn "Legacy app bundle still exists at ${LEGACY_APP_DIR}"
+        warn "Run the installer with --uninstall if you want that old bundle removed."
+    fi
 }
 
 uninstall_app() {
-    require_safe_dir "$APP_DIR"
+    require_safe_dir "$INSTALL_DIR"
+    require_safe_dir "$LEGACY_APP_DIR"
 
     if [ -d "${INSTALL_DIR}/${BINARY}" ] && [ ! -L "${INSTALL_DIR}/${BINARY}" ]; then
         error "Refusing to remove directory at ${INSTALL_DIR}/${BINARY}"
@@ -288,9 +281,9 @@ uninstall_app() {
         info "Removed ${INSTALL_DIR}/${BINARY}"
     fi
 
-    if [ -e "$APP_DIR" ] || [ -L "$APP_DIR" ]; then
-        rm -rf "$APP_DIR"
-        info "Removed ${APP_DIR}"
+    if [ -e "$LEGACY_APP_DIR" ] || [ -L "$LEGACY_APP_DIR" ]; then
+        rm -rf "$LEGACY_APP_DIR"
+        info "Removed legacy bundle at ${LEGACY_APP_DIR}"
     fi
 
     echo ""
@@ -300,6 +293,7 @@ uninstall_app() {
 
 require_cmd curl
 require_cmd tar
+require_cmd find
 
 if [ "$UNINSTALL" -eq 1 ]; then
     uninstall_app
@@ -307,9 +301,8 @@ fi
 
 OS="$(detect_os)"
 ARCH="$(detect_arch)"
-ASSET_BASENAME="${BINARY}-${OS}-${ARCH}"
-ARCHIVE_NAME="${ASSET_BASENAME}.tar.gz"
-CHECKSUM_NAME="${ARCHIVE_NAME}.sha256"
+ARCHIVE_NAME="${BINARY}-${OS}-${ARCH}.tar.gz"
+CHECKSUM_NAME="checksums.txt"
 BASE_URL="$(release_base_url)"
 ARCHIVE_URL="${BASE_URL}/${ARCHIVE_NAME}"
 CHECKSUM_URL="${BASE_URL}/${CHECKSUM_NAME}"
@@ -322,14 +315,13 @@ curl -fsSL "$ARCHIVE_URL" -o "${TMPDIR}/${ARCHIVE_NAME}" || error "Failed to dow
 curl -fsSL "$CHECKSUM_URL" -o "${TMPDIR}/${CHECKSUM_NAME}" || error "Failed to download ${CHECKSUM_URL}"
 
 info "Verifying checksum"
-verify_checksum "$TMPDIR" "$CHECKSUM_NAME"
+verify_checksum "$TMPDIR" "$CHECKSUM_NAME" "$ARCHIVE_NAME"
 
 info "Extracting ${ARCHIVE_NAME}"
-tar -xzf "${TMPDIR}/${ARCHIVE_NAME}" -C "$TMPDIR"
+mkdir -p "${TMPDIR}/extract"
+tar -xzf "${TMPDIR}/${ARCHIVE_NAME}" -C "${TMPDIR}/extract"
 
-ARTIFACT_PATH="${TMPDIR}/${BINARY}"
-[ -d "$ARTIFACT_PATH" ] || error "Expected ${ARCHIVE_NAME} to contain a ${BINARY}/ app bundle"
-install_app_bundle "$ARTIFACT_PATH"
+install_binary "${TMPDIR}/extract"
 
 "${INSTALL_DIR}/${BINARY}" --help >/dev/null 2>&1 || error "Installed binary did not start correctly"
 

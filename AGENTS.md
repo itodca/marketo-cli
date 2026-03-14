@@ -1,10 +1,11 @@
 # marketo-cli Agent Guide
 
-This repo ships `mrkto`, a Typer-based Marketo CLI.
+This repo ships `mrkto`, a Go-based Marketo CLI.
 
 ## Source Of Truth
-- Command behavior: `src/mrkto/cli.py`
-- Resource wiring: `src/mrkto/resources/`
+- Command behavior: `internal/cmd/`
+- HTTP/client behavior: `internal/client/`
+- Config and profile behavior: `internal/config/`, `internal/profile/`
 - User-facing contract: `README.md`
 - Agent usage examples: `skills/mrkto/SKILL.md`
 
@@ -18,10 +19,10 @@ This repo ships `mrkto`, a Typer-based Marketo CLI.
 - Mutating commands must remain dry-run-first and require `--execute`
 
 ## Development
-- Install deps: `uv sync` or `uv run ...`
-- Run tests: `uv run pytest`
-- Validate syntax: `python3 -m compileall src tests`
-- Build binary artifact: `./scripts/build-binary.sh`
+- Run Go tests: `go test ./...`
+- Run Python reference tests: `uv run pytest`
+- Validate installer scripts: `bash -n install.sh && bash -n scripts/build-binary.sh`
+- Build native artifact: `./scripts/build-binary.sh`
 
 ## Sync Points
 - If you change commands, update:
@@ -36,4 +37,4 @@ This repo ships `mrkto`, a Typer-based Marketo CLI.
 ## Avoid
 - Reintroducing the old `argparse`-era command names like `campaign` or `list`
 - Adding hidden prompts to mutating commands
-- Making the binary installer the only supported install path; keep source install viable
+- Reintroducing PyInstaller-era app bundle assumptions into the installer or release flow

@@ -1,0 +1,33 @@
+version: 2
+
+project_name: mrkto
+
+builds:
+  - id: mrkto
+    main: ./cmd/mrkto
+    binary: mrkto
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/itodca/marketo-cli/internal/version.Version={{ .Version }} -X github.com/itodca/marketo-cli/internal/version.Commit={{ .Commit }} -X github.com/itodca/marketo-cli/internal/version.Date={{ .Date }}
+
+archives:
+  - id: default
+    ids:
+      - mrkto
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .Binary }}-{{ .Os }}-{{ if eq .Arch "amd64" }}x64{{ else }}{{ .Arch }}{{ end }}
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc

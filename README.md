@@ -2,6 +2,8 @@
 
 Marketo REST API CLI for humans and agents. The installed command is `mrkto`.
 
+The current implementation is Go and ships native release archives for macOS and Linux.
+
 The CLI uses explicit resource names, structured JSON output, dry-run defaults for writes, and a raw `api` escape hatch for unsupported endpoints.
 
 ## What It Is For
@@ -27,30 +29,29 @@ curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh 
 
 The installer:
 
-- downloads the matching release bundle from GitHub Releases
-- installs the app bundle under `~/.local/share/mrkto` by default
-- symlinks `mrkto` into `~/.local/bin` by default
+- downloads the matching native release archive from GitHub Releases
+- installs `mrkto` into `~/.local/bin` by default
 - adds that directory to your shell `PATH` if needed
 
 Useful options:
 
 ```bash
 # Install a specific release tag
-curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.4
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version vX.Y.Z
 
 # Install somewhere else and leave PATH alone
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --install-dir "$HOME/bin" --no-modify-path
 
-# Uninstall the app bundle and command symlink
+# Uninstall the installed command and remove the legacy app bundle if present
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --uninstall
 ```
 
 Other install options:
 
 - download the release artifact directly from GitHub Releases
-- install from PyPI with `pipx install marketo-cli`
-- install the latest main branch with `pipx install git+https://github.com/itodca/marketo-cli.git`
-- install from a checkout with `pip install .`
+- build from source with `go build ./cmd/mrkto`
+
+The Python package remains in the repo as a migration/reference path, but native binaries are the primary supported install path.
 
 ## Quick Start
 
@@ -249,7 +250,8 @@ The repo still ships with a skills-based installer for supported coding agents:
 
 ```bash
 mrkto skill install
-mrkto skill install --scope project
+mrkto skill install --global
+mrkto skill uninstall
 ```
 
 ## More Docs
@@ -262,7 +264,7 @@ mrkto skill install --scope project
 
 - CI runs tests, compile checks, and package builds on pushes and pull requests
 - GitHub Releases build macOS and Linux binaries on `v*` tags
-- PyPI publishing runs through GitHub Actions trusted publishing
+- PyPI publishing is manual-only during the migration period
 
 ## Source Contracts
 
@@ -275,21 +277,20 @@ The CLI is implemented against Adobe's published Marketo OpenAPI specs:
 
 ## Binary Releases
 
-Build a release artifact locally with PyInstaller:
+Build a release artifact locally with Go:
 
 ```bash
-python3 -m pip install '.[build]'
 ./scripts/build-binary.sh
 ```
 
-This creates assets under `dist/releases/` using the installer's expected naming scheme. Each archive contains the `mrkto/` app bundle used by the installer:
+This creates assets under `dist/releases/` using the installer's expected naming scheme. Each archive contains the native `mrkto` binary:
 
 - `mrkto-darwin-arm64.tar.gz`
 - `mrkto-darwin-x64.tar.gz`
 - `mrkto-linux-arm64.tar.gz`
 - `mrkto-linux-x64.tar.gz`
 
-Each archive is accompanied by a `.sha256` checksum file.
+Checksums are written to `checksums.txt`.
 
 ## License
 

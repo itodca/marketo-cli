@@ -899,13 +899,20 @@ def api_delete(
 
 @skill_app.command("install")
 def skill_install(
-    scope: Annotated[str, typer.Option("--scope", help="Install scope.", case_sensitive=False)] = "user",
+    global_install: Annotated[bool, typer.Option("--global", help="Install the skill for all projects.")] = False,
 ) -> None:
-    if scope not in {"user", "project"}:
-        print_error("--scope must be one of: user, project")
-        raise typer.Exit(1)
     try:
-        skill.install_skill(scope=scope)
+        skill.install_skill(global_install=global_install)
+    except SystemExit as exc:
+        raise typer.Exit(exc.code) from exc
+
+
+@skill_app.command("uninstall")
+def skill_uninstall(
+    global_install: Annotated[bool, typer.Option("--global", help="Uninstall the globally installed skill.")] = False,
+) -> None:
+    try:
+        skill.uninstall_skill(global_install=global_install)
     except SystemExit as exc:
         raise typer.Exit(exc.code) from exc
 

@@ -2,10 +2,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
-BUILD_ROOT="${ROOT}/build/pyinstaller"
+BUILD_DIR="${BUILD_DIR:-${ROOT}/build/go}"
 OUTPUT_DIR="${OUTPUT_DIR:-${ROOT}/dist/releases}"
 BINARY_NAME="mrkto"
+VERSION="${VERSION:-dev}"
+COMMIT="${COMMIT:-$(git -C "${ROOT}" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+DATE="${DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 
 info() {
     printf 'OK %s\n' "$1"
@@ -24,7 +26,15 @@ detect_os() {
     esac
 }
 
-detect_arch() {
+detect_goarch() {
+    case "$(uname -m)" in
+        x86_64|amd64) echo "amd64" ;;
+        arm64|aarch64) echo "arm64" ;;
+        *) error "Unsupported architecture: $(uname -m)" ;;
+    esac
+}
+
+detect_archive_arch() {
     case "$(uname -m)" in
         x86_64|amd64) echo "x64" ;;
         arm64|aarch64) echo "arm64" ;;
@@ -32,66 +42,51 @@ detect_arch() {
     esac
 }
 
-checksum_file() {
-    local file="$1"
-    local dir
-    local base
-    dir="$(dirname "$file")"
-    base="$(basename "$file")"
+write_checksums() {
+    local output_dir="$1"
+    local asset_name="$2"
+    local checksum_path="${output_dir}/checksums.txt"
+
     if command -v shasum >/dev/null 2>&1; then
-        (cd "$dir" && shasum -a 256 "$base" > "${base}.sha256")
+        (cd "$output_dir" && shasum -a 256 "$asset_name" > "$(basename "$checksum_path")")
         return
     fi
     if command -v sha256sum >/dev/null 2>&1; then
-        (cd "$dir" && sha256sum "$base" > "${base}.sha256")
+        (cd "$output_dir" && sha256sum "$asset_name" > "$(basename "$checksum_path")")
         return
     fi
     error "No checksum tool found"
 }
 
-command -v "$PYTHON_BIN" >/dev/null 2>&1 || error "Python not found: ${PYTHON_BIN}"
-"$PYTHON_BIN" -m PyInstaller --version >/dev/null 2>&1 || error "PyInstaller is not installed. Run: ${PYTHON_BIN} -m pip install '.[build]'"
+command -v go >/dev/null 2>&1 || error "Go is not installed"
 
 OS="$(detect_os)"
-ARCH="$(detect_arch)"
-ASSET_NAME="${BINARY_NAME}-${OS}-${ARCH}.tar.gz"
+GOARCH="$(detect_goarch)"
+ARCHIVE_ARCH="$(detect_archive_arch)"
+ASSET_NAME="${BINARY_NAME}-${OS}-${ARCHIVE_ARCH}.tar.gz"
 
-rm -rf "$BUILD_ROOT"
-mkdir -p "$OUTPUT_DIR"
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 
-info "Building ${BINARY_NAME} with PyInstaller"
-"$PYTHON_BIN" -m PyInstaller \
-    --noconfirm \
-    --clean \
-    --onedir \
-    --name "$BINARY_NAME" \
-    --additional-hooks-dir "${ROOT}/pyinstaller/hooks" \
-    --paths "${ROOT}/src" \
-    --distpath "${BUILD_ROOT}/dist" \
-    --workpath "${BUILD_ROOT}/work" \
-    --specpath "${BUILD_ROOT}/spec" \
-    "${ROOT}/src/mrkto/__main__.py"
+info "Building ${BINARY_NAME} for ${OS}/${GOARCH}"
+(
+    cd "$ROOT"
+    CGO_ENABLED=0 GOOS="$OS" GOARCH="$GOARCH" \
+        go build \
+        -trimpath \
+        -ldflags "-s -w -X github.com/itodca/marketo-cli/internal/version.Version=${VERSION} -X github.com/itodca/marketo-cli/internal/version.Commit=${COMMIT} -X github.com/itodca/marketo-cli/internal/version.Date=${DATE}" \
+        -o "${BUILD_DIR}/${BINARY_NAME}" \
+        ./cmd/mrkto
+)
 
-info "Smoke testing bundled ${BINARY_NAME}"
-"${BUILD_ROOT}/dist/${BINARY_NAME}/${BINARY_NAME}" auth list >/dev/null
-AUTH_CHECK_OUTPUT="$(
-    MARKETO_MUNCHKIN_ID=test \
-    MARKETO_CLIENT_ID=test \
-    MARKETO_CLIENT_SECRET=test \
-    MARKETO_IDENTITY_URL=http://127.0.0.1:9/identity \
-    MARKETO_REST_URL=http://127.0.0.1:9/rest \
-    "${BUILD_ROOT}/dist/${BINARY_NAME}/${BINARY_NAME}" auth check 2>&1 >/dev/null || true
-)"
-case "$AUTH_CHECK_OUTPUT" in
-    *"ModuleNotFoundError"*|*"Failed to execute script"*)
-        error "Bundled ${BINARY_NAME} is missing lazy imports"
-        ;;
-esac
+info "Smoke testing ${BINARY_NAME}"
+"${BUILD_DIR}/${BINARY_NAME}" --help >/dev/null
+"${BUILD_DIR}/${BINARY_NAME}" version >/dev/null
 
 info "Packaging ${ASSET_NAME}"
-tar -C "${BUILD_ROOT}/dist" -czf "${OUTPUT_DIR}/${ASSET_NAME}" "$BINARY_NAME"
-checksum_file "${OUTPUT_DIR}/${ASSET_NAME}"
+tar -C "${BUILD_DIR}" -czf "${OUTPUT_DIR}/${ASSET_NAME}" "${BINARY_NAME}"
+write_checksums "${OUTPUT_DIR}" "${ASSET_NAME}"
 
 info "Release artifacts written to ${OUTPUT_DIR}"
 echo "  ${OUTPUT_DIR}/${ASSET_NAME}"
-echo "  ${OUTPUT_DIR}/${ASSET_NAME}.sha256"
+echo "  ${OUTPUT_DIR}/checksums.txt"
