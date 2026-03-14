@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -20,6 +19,8 @@ func newStaticListCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 	staticListCmd.AddCommand(newStaticListGetCmd(runtime, options))
 	staticListCmd.AddCommand(newStaticListMembersCmd(runtime, options))
 	staticListCmd.AddCommand(newStaticListCheckCmd(runtime, options))
+	staticListCmd.AddCommand(newStaticListAddCmd(runtime, options))
+	staticListCmd.AddCommand(newStaticListRemoveCmd(runtime, options))
 
 	return staticListCmd
 }
@@ -79,14 +80,14 @@ func newStaticListGetCmd(runtime *Runtime, options *RootOptions) *cobra.Command 
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			apiClient, err := loadClient(runtime, options.Profile)
-				if err != nil {
-					return err
-				}
+			if err != nil {
+				return err
+			}
 
-				result, err := apiClient.Get("/asset/v1/staticList/"+args[0]+".json", nil)
-				if err != nil {
-					return err
-				}
+			result, err := apiClient.Get("/asset/v1/staticList/"+args[0]+".json", nil)
+			if err != nil {
+				return err
+			}
 
 			return writeResult(runtime, options, result)
 		},
@@ -138,11 +139,8 @@ func newStaticListCheckCmd(runtime *Runtime, options *RootOptions) *cobra.Comman
 		Short: "Check whether leads belong to a static list.",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(leadIDs) == 0 {
-				return fmt.Errorf("At least one lead id is required")
-			}
-			if len(leadIDs) > 300 {
-				return fmt.Errorf("A maximum of 300 leads is allowed per static list request")
+			if err := validateLeadIDs(leadIDs, 300, "static list request"); err != nil {
+				return err
 			}
 
 			apiClient, err := loadClient(runtime, options.Profile)
@@ -160,6 +158,112 @@ func newStaticListCheckCmd(runtime *Runtime, options *RootOptions) *cobra.Comman
 	}
 
 	cmd.Flags().IntSliceVar(&leadIDs, "lead", nil, "Lead id to check. Repeat the option for multiple leads.")
+	return cmd
+}
+
+func newStaticListAddCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
+	var (
+		leadIDs []int
+		execute bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "add <list-id>",
+		Short: "Add leads to a static list.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			listID, err := parseIntArg("list id", args[0])
+			if err != nil {
+				return err
+			}
+
+			if err := validateLeadIDs(leadIDs, 300, "static list request"); err != nil {
+				return err
+			}
+
+			request := map[string]any{"input": leadInputs(leadIDs)}
+			if !execute {
+				return writeResult(runtime, options, map[string]any{
+					"dry_run":  true,
+					"resource": "static-list",
+					"action":   "add",
+					"list_id":  listID,
+					"request":  request,
+				})
+			}
+
+			apiClient, err := loadClient(runtime, options.Profile)
+			if err != nil {
+				return err
+			}
+
+			result, err := apiClient.Post("/v1/lists/"+args[0]+"/leads.json", nil, request)
+			if err != nil {
+				return err
+			}
+
+			return writeResult(runtime, options, result)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.IntSliceVar(&leadIDs, "lead", nil, "Lead id to add. Repeat the option for multiple leads.")
+	flags.BoolVar(&execute, "execute", false, "Send the request instead of returning a dry-run payload.")
+
+	return cmd
+}
+
+func newStaticListRemoveCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
+	var (
+		leadIDs []int
+		execute bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "remove <list-id>",
+		Short: "Remove leads from a static list.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			listID, err := parseIntArg("list id", args[0])
+			if err != nil {
+				return err
+			}
+
+			if err := validateLeadIDs(leadIDs, 300, "static list request"); err != nil {
+				return err
+			}
+
+			request := map[string]any{"input": leadInputs(leadIDs)}
+			params := map[string]any{"id": intsToStrings(leadIDs)}
+			if !execute {
+				return writeResult(runtime, options, map[string]any{
+					"dry_run":  true,
+					"resource": "static-list",
+					"action":   "remove",
+					"list_id":  listID,
+					"request":  request,
+					"params":   params,
+				})
+			}
+
+			apiClient, err := loadClient(runtime, options.Profile)
+			if err != nil {
+				return err
+			}
+
+			result, err := apiClient.Delete("/v1/lists/"+args[0]+"/leads.json", params, request)
+			if err != nil {
+				return err
+			}
+
+			return writeResult(runtime, options, result)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.IntSliceVar(&leadIDs, "lead", nil, "Lead id to remove. Repeat the option for multiple leads.")
+	flags.BoolVar(&execute, "execute", false, "Send the request instead of returning a dry-run payload.")
+
 	return cmd
 }
 

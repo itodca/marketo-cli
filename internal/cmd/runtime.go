@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/itodca/marketo-cli/internal/client"
@@ -133,6 +134,14 @@ func parseKVPairs(values []string) (map[string]any, error) {
 	}
 
 	return result, nil
+}
+
+func parseIntArg(label, raw string) (int, error) {
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, fmt.Errorf("Invalid %s: %s", label, raw)
+	}
+	return value, nil
 }
 
 func loadJSONInput(runtime *Runtime, inputPath string) (map[string]any, error) {

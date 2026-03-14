@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 
 	"github.com/itodca/marketo-cli/internal/version"
@@ -35,6 +37,7 @@ func NewRootCmd(runtime *Runtime) *cobra.Command {
 	rootCmd.AddCommand(newCompanyCmd(runtime, options))
 	rootCmd.AddCommand(newLeadCmd(runtime, options))
 	rootCmd.AddCommand(newProgramCmd(runtime, options))
+	rootCmd.AddCommand(newSkillCmd(runtime))
 	rootCmd.AddCommand(newSmartCampaignCmd(runtime, options))
 	rootCmd.AddCommand(newSmartListCmd(runtime, options))
 	rootCmd.AddCommand(newStaticListCmd(runtime, options))
@@ -48,6 +51,10 @@ func NewRootCmd(runtime *Runtime) *cobra.Command {
 func Execute() int {
 	runtime := NewRuntime()
 	if err := NewRootCmd(runtime).Execute(); err != nil {
+		var exitErr *exitError
+		if errors.As(err, &exitErr) {
+			return exitErr.ExitCode()
+		}
 		writeError(runtime, err)
 		return 1
 	}

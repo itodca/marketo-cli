@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -234,6 +235,10 @@ func executeTestCommand(t *testing.T, env map[string]string, stdin *bytes.Buffer
 	command.SetArgs(args)
 
 	if err := command.Execute(); err != nil {
+		var exitErr *exitError
+		if errors.As(err, &exitErr) {
+			return exitErr.ExitCode(), stdout.String(), stderr.String()
+		}
 		writeError(runtime, err)
 		return 1, stdout.String(), stderr.String()
 	}
