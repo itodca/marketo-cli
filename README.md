@@ -27,9 +27,8 @@ curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh 
 
 The installer:
 
-- downloads the matching release bundle from GitHub Releases
-- installs the app bundle under `~/.local/share/mrkto` by default
-- symlinks `mrkto` into `~/.local/bin` by default
+- downloads the matching native release archive from GitHub Releases
+- installs `mrkto` into `~/.local/bin` by default
 - adds that directory to your shell `PATH` if needed
 
 Useful options:
@@ -41,13 +40,14 @@ curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh 
 # Install somewhere else and leave PATH alone
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --install-dir "$HOME/bin" --no-modify-path
 
-# Uninstall the app bundle and command symlink
+# Uninstall the installed command and remove the legacy app bundle if present
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --uninstall
 ```
 
 Other install options:
 
 - download the release artifact directly from GitHub Releases
+- build from source with `go build ./cmd/mrkto`
 - install from PyPI with `pipx install marketo-cli`
 - install the latest main branch with `pipx install git+https://github.com/itodca/marketo-cli.git`
 - install from a checkout with `pip install .`
