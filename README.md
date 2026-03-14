@@ -95,6 +95,8 @@ mrkto smart-campaign trigger 1234 --lead 1001 --lead 1002
 mrkto api get /v1/leads.json --query filterType=email --query filterValues=user@example.com
 ```
 
+When `npx` is available, the interactive `mrkto setup` flow can also offer to install the `mrkto` agent skill as an optional final step.
+
 ## Profiles
 
 A profile is a saved Marketo connection.

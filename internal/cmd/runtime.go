@@ -155,11 +155,7 @@ func promptIfMissing(runtime *Runtime, value, label string) (string, error) {
 		return "", err
 	}
 
-	reader, ok := runtime.Stdin.(*bufio.Reader)
-	if !ok {
-		reader = bufio.NewReader(runtime.Stdin)
-		runtime.Stdin = reader
-	}
+	reader := bufferedStdin(runtime)
 	line, err := reader.ReadString('\n')
 	if err != nil && !errors.Is(err, io.EOF) {
 		return "", err
@@ -170,6 +166,43 @@ func promptIfMissing(runtime *Runtime, value, label string) (string, error) {
 		return "", fmt.Errorf("%s is required", label)
 	}
 	return line, nil
+}
+
+func promptYesNo(runtime *Runtime, prompt string, defaultYes bool) (bool, error) {
+	defaultLabel := "y/N"
+	if defaultYes {
+		defaultLabel = "Y/n"
+	}
+	if _, err := fmt.Fprintf(runtime.Stderr, "%s [%s] ", prompt, defaultLabel); err != nil {
+		return false, err
+	}
+
+	reader := bufferedStdin(runtime)
+	line, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return false, err
+	}
+
+	answer := strings.TrimSpace(strings.ToLower(line))
+	if answer == "" {
+		return defaultYes, nil
+	}
+	if answer == "y" || answer == "yes" {
+		return true, nil
+	}
+	if answer == "n" || answer == "no" {
+		return false, nil
+	}
+	return defaultYes, nil
+}
+
+func bufferedStdin(runtime *Runtime) *bufio.Reader {
+	reader, ok := runtime.Stdin.(*bufio.Reader)
+	if !ok {
+		reader = bufio.NewReader(runtime.Stdin)
+		runtime.Stdin = reader
+	}
+	return reader
 }
 
 func loadJSONInput(runtime *Runtime, inputPath string) (map[string]any, error) {

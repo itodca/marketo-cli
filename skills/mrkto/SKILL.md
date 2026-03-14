@@ -17,6 +17,8 @@ mrkto auth setup    # Interactive — prompts for Munchkin ID, Client ID, Client
 mrkto auth check    # Verify credentials work
 ```
 
+If `npx` is available, the interactive `mrkto setup` flow may also offer to install the `mrkto` agent skill as an optional final step.
+
 ## Profiles
 
 - A profile is a saved Marketo connection

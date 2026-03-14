@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.1] — 2026-03-14
+
+Setup and docs polish release.
+
+- Clarify the profile mental model around saved Marketo connections, especially when one company has multiple Marketo instances
+- Improve `--profile`, `auth`, and `setup` help text to better explain profile use cases
+- Add an optional end-of-setup prompt to install the `mrkto` agent skill when `npx` is available
+- Clarify native upgrade and uninstall guidance in the README and examples
+- Retire the remaining repo-side PyPI publish workflow and documentation
+- Update the agent skill guidance to explain profiles more clearly
+
 ## [0.2.0] — 2026-03-13
 
 Go rewrite release.

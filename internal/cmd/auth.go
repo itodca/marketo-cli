@@ -18,7 +18,7 @@ func newAuthCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 
 	authCmd.AddCommand(newAuthListCmd(runtime, options))
 	authCmd.AddCommand(newAuthCheckCmd(runtime, options))
-	authCmd.AddCommand(newAuthSetupCmd(runtime, options, "setup", "Save credentials for a Marketo instance or environment."))
+	authCmd.AddCommand(newAuthSetupCmd(runtime, options, "setup", "Save credentials for a Marketo instance or environment.", false))
 
 	return authCmd
 }
@@ -46,7 +46,7 @@ func newAuthListCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 	}
 }
 
-func newAuthSetupCmd(runtime *Runtime, options *RootOptions, use, short string) *cobra.Command {
+func newAuthSetupCmd(runtime *Runtime, options *RootOptions, use, short string, promptForSkill bool) *cobra.Command {
 	var (
 		profileName  string
 		munchkinID   string
@@ -77,6 +77,12 @@ func newAuthSetupCmd(runtime *Runtime, options *RootOptions, use, short string) 
 				return err
 			}
 
+			if promptForSkill {
+				if err := maybeInstallSkillAfterSetup(runtime); err != nil {
+					return err
+				}
+			}
+
 			return writeResult(runtime, options, map[string]any{
 				"status":  "saved",
 				"path":    configPath,
@@ -100,6 +106,30 @@ func profileNameOrDefault(profileName string) string {
 		return "default"
 	}
 	return profileName
+}
+
+func maybeInstallSkillAfterSetup(runtime *Runtime) error {
+	if _, err := lookPath("npx"); err != nil {
+		return nil
+	}
+
+	installSkill, err := promptYesNo(runtime, "Install the mrkto agent skill now?", false)
+	if err != nil {
+		return err
+	}
+	if !installSkill {
+		return nil
+	}
+
+	skillRuntime := &Runtime{
+		Stdin:  runtime.Stdin,
+		Stdout: runtime.Stderr,
+		Stderr: runtime.Stderr,
+		Cwd:    runtime.Cwd,
+		Getenv: runtime.Getenv,
+	}
+
+	return runSkillCommand(skillRuntime, "add", false)
 }
 
 func newAuthCheckCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
