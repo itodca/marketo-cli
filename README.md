@@ -37,7 +37,7 @@ Useful options:
 
 ```bash
 # Install a specific release tag
-curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version v0.1.4
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --version vX.Y.Z
 
 # Install somewhere else and leave PATH alone
 curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --install-dir "$HOME/bin" --no-modify-path
@@ -50,9 +50,8 @@ Other install options:
 
 - download the release artifact directly from GitHub Releases
 - build from source with `go build ./cmd/mrkto`
-- install from PyPI with `pipx install marketo-cli`
-- install the latest main branch with `pipx install git+https://github.com/itodca/marketo-cli.git`
-- install from a checkout with `pip install .`
+
+The Python package remains in the repo as a migration/reference path, but native binaries are the primary supported install path.
 
 ## Quick Start
 
@@ -265,7 +264,7 @@ mrkto skill uninstall
 
 - CI runs tests, compile checks, and package builds on pushes and pull requests
 - GitHub Releases build macOS and Linux binaries on `v*` tags
-- PyPI publishing runs through GitHub Actions trusted publishing
+- PyPI publishing is manual-only during the migration period
 
 ## Source Contracts
 
@@ -278,21 +277,20 @@ The CLI is implemented against Adobe's published Marketo OpenAPI specs:
 
 ## Binary Releases
 
-Build a release artifact locally with PyInstaller:
+Build a release artifact locally with Go:
 
 ```bash
-python3 -m pip install '.[build]'
 ./scripts/build-binary.sh
 ```
 
-This creates assets under `dist/releases/` using the installer's expected naming scheme. Each archive contains the `mrkto/` app bundle used by the installer:
+This creates assets under `dist/releases/` using the installer's expected naming scheme. Each archive contains the native `mrkto` binary:
 
 - `mrkto-darwin-arm64.tar.gz`
 - `mrkto-darwin-x64.tar.gz`
 - `mrkto-linux-arm64.tar.gz`
 - `mrkto-linux-x64.tar.gz`
 
-Each archive is accompanied by a `.sha256` checksum file.
+Checksums are written to `checksums.txt`.
 
 ## License
 

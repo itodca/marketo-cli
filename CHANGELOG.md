@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0] — 2026-03-13
+
+Go rewrite release.
+
+- Rewrite the CLI implementation in Go while preserving the `mrkto` command contract
+- Keep config files, profile resolution, and token cache compatibility with the Python implementation
+- Port all read and write commands, including `smart-campaign schedule|trigger`, `static-list add|remove`, and `skill install|uninstall`
+- Restore `mrkto auth setup` and `mrkto setup` with interactive prompting and profile writes under `~/.config/mrkto/`
+- Replace PyInstaller release packaging with native Go builds, GoReleaser, and a simplified binary installer
+- Keep Python reference tests in CI during the migration and make PyPI publishing manual-only
+- Move static-list metadata lookups to the documented Adobe asset endpoints while keeping membership mutations on the lead API endpoints
+
 ## [0.1.5] — 2026-03-13
 
 Skill command UX release.
