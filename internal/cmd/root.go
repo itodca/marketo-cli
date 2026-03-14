@@ -26,7 +26,7 @@ func NewRootCmd(runtime *Runtime) *cobra.Command {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	flags := rootCmd.PersistentFlags()
-	flags.StringVar(&options.Profile, "profile", "", "Named profile to use.")
+	flags.StringVar(&options.Profile, "profile", "", "Saved Marketo connection to use, such as production, sandbox, or another instance.")
 	flags.BoolVar(&options.JSON, "json", false, "Pretty JSON output (default).")
 	flags.BoolVar(&options.Compact, "compact", false, "One JSON object per line.")
 	flags.BoolVar(&options.Raw, "raw", false, "Single-line JSON output for the full returned payload.")

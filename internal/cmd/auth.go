@@ -10,7 +10,7 @@ import (
 func newAuthCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 	authCmd := &cobra.Command{
 		Use:   "auth",
-		Short: "Authentication and profile management.",
+		Short: "Authentication and saved Marketo connections.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -18,7 +18,7 @@ func newAuthCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 
 	authCmd.AddCommand(newAuthListCmd(runtime, options))
 	authCmd.AddCommand(newAuthCheckCmd(runtime, options))
-	authCmd.AddCommand(newAuthSetupCmd(runtime, options, "setup", "Write credentials for a profile."))
+	authCmd.AddCommand(newAuthSetupCmd(runtime, options, "setup", "Save credentials for a Marketo instance or environment."))
 
 	return authCmd
 }
@@ -26,7 +26,7 @@ func newAuthCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 func newAuthListCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List configured profiles.",
+		Short: "List saved Marketo connections.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			profiles, err := profile.ListProfiles()
 			if err != nil {
@@ -86,7 +86,7 @@ func newAuthSetupCmd(runtime *Runtime, options *RootOptions, use, short string) 
 	}
 
 	flags := cmd.Flags()
-	flags.StringVar(&profileName, "profile", "", "Named profile to write.")
+	flags.StringVar(&profileName, "profile", "", "Profile name to save, such as sandbox, production, or another instance.")
 	flags.StringVar(&munchkinID, "munchkin-id", "", "Marketo munchkin id.")
 	flags.StringVar(&clientID, "client-id", "", "LaunchPoint client id.")
 	flags.StringVar(&clientSecret, "client-secret", "", "LaunchPoint client secret.")

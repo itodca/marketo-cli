@@ -99,18 +99,24 @@ mrkto api get /v1/leads.json --query filterType=email --query filterValues=user@
 
 A profile is a saved Marketo connection.
 
-Use profiles when you work with:
+Most users only need the `default` profile.
 
-- more than one Marketo instance
+Use additional profiles when:
+
+- the same company has multiple Marketo instances
 - a production and sandbox instance
 - different clients or business units
 - project folders that should automatically use different credentials
 
 Examples:
 
-- `default` for your main production instance
+- `default` for your main Marketo instance
 - `sandbox` for testing
+- `marketing-prod` and `marketing-sandbox` for separate environments
+- `na` and `emea` if one company operates multiple instances
 - `acme` and `globex` if you work across clients
+
+Think of the profile name as a label you choose for the Marketo connection you want to use.
 
 Credentials are stored in `~/.config/mrkto/`:
 
@@ -147,6 +153,8 @@ Profile resolution order:
 2. `MRKTO_PROFILE`
 3. `.mrkto-profile` in the current directory tree
 4. `default`
+
+In practice, this lets one project folder point at one Marketo instance while another folder points at a different instance, without changing environment variables every time.
 
 Environment variables override file-based config:
 

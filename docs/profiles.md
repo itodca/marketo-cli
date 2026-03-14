@@ -2,12 +2,15 @@
 
 A profile is a saved Marketo connection.
 
-Each profile stores the credentials and endpoints needed to talk to one Marketo instance. Profiles let you switch cleanly between environments without editing environment variables every time.
+Each profile stores the credentials and endpoints for one Marketo connection. In most teams, that usually means one Marketo instance or environment.
+
+Most users only need the `default` profile. Create more profiles when you need to switch between multiple saved connections.
 
 ## When To Use Profiles
 
 Profiles are useful when you work with:
 
+- multiple Marketo instances inside the same company
 - production and sandbox instances
 - multiple clients
 - multiple business units
@@ -17,8 +20,14 @@ Example profile names:
 
 - `default`
 - `sandbox`
+- `marketing-prod`
+- `marketing-sandbox`
+- `na`
+- `emea`
 - `acme`
 - `globex`
+
+The profile name is just a label you choose for the connection.
 
 ## Creating Profiles
 
@@ -86,6 +95,7 @@ Then commands inside that directory tree will automatically use `sandbox` unless
 
 This is useful when:
 
+- one repo should always target one Marketo instance inside a company
 - one repo targets a sandbox instance
 - another repo targets a production instance
 - you want agents running in that directory to inherit the right Marketo context automatically
