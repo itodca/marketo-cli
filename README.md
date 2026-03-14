@@ -53,6 +53,23 @@ Other install options:
 
 The older Python implementation remains in the repo as a reference during the migration, but it is no longer a supported distribution channel.
 
+## Upgrade And Uninstall
+
+To upgrade, rerun the installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash
+```
+
+If you want a clean transition from an older Python/PyInstaller install, uninstall first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash
+```
+
+The uninstall path removes the installed `mrkto` binary and also removes the old legacy bundle at `~/.local/share/mrkto` if it still exists.
+
 ## Quick Start
 
 ```bash
@@ -279,6 +296,7 @@ The CLI is implemented against Adobe's published Marketo OpenAPI specs:
 Build a release artifact locally with Go:
 
 ```bash
+go test ./...
 ./scripts/build-binary.sh
 ```
 

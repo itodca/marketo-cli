@@ -1,5 +1,20 @@
 # Examples
 
+## Install, Upgrade, And Uninstall
+
+Install or upgrade the latest release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash
+```
+
+Clean out an older install first:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash -s -- --uninstall
+curl -fsSL https://raw.githubusercontent.com/itodca/marketo-cli/main/install.sh | bash
+```
+
 ## First-Time Setup
 
 ```bash
