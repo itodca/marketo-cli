@@ -51,7 +51,7 @@ Other install options:
 - download the release artifact directly from GitHub Releases
 - build from source with `go build ./cmd/mrkto`
 
-The Python package remains in the repo as a migration/reference path, but native binaries are the primary supported install path.
+The older Python implementation remains in the repo as a reference during the migration, but it is no longer a supported distribution channel.
 
 ## Quick Start
 
@@ -264,7 +264,6 @@ mrkto skill uninstall
 
 - CI runs tests, compile checks, and package builds on pushes and pull requests
 - GitHub Releases build macOS and Linux binaries on `v*` tags
-- PyPI publishing is manual-only during the migration period
 
 ## Source Contracts
 
