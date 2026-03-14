@@ -17,6 +17,23 @@ mrkto auth setup    # Interactive — prompts for Munchkin ID, Client ID, Client
 mrkto auth check    # Verify credentials work
 ```
 
+## Profiles
+
+- A profile is a saved Marketo connection
+- Most users only need the `default` profile
+- Create additional profiles when the same company has multiple Marketo instances, or when you need separate production and sandbox credentials
+- Use names that describe the connection, like `sandbox`, `marketing-prod`, `na`, or `emea`
+- `--profile` selects a saved connection explicitly
+- `.mrkto-profile` lets a project directory automatically use the right connection
+
+Examples:
+
+```bash
+mrkto auth setup --profile sandbox
+mrkto auth check --profile sandbox
+echo "sandbox" > .mrkto-profile
+```
+
 ## Common Workflows
 
 ### Look up a lead by email
