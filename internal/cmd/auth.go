@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 
+	"github.com/itodca/marketo-cli/internal/config"
 	"github.com/itodca/marketo-cli/internal/profile"
 )
 
@@ -19,7 +18,7 @@ func newAuthCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 
 	authCmd.AddCommand(newAuthListCmd(runtime, options))
 	authCmd.AddCommand(newAuthCheckCmd(runtime, options))
-	authCmd.AddCommand(newAuthSetupCmd("setup", "Write credentials for a profile.", "auth setup is not implemented in the Go rewrite yet"))
+	authCmd.AddCommand(newAuthSetupCmd(runtime, options, "setup", "Write credentials for a profile."))
 
 	return authCmd
 }
@@ -47,7 +46,7 @@ func newAuthListCmd(runtime *Runtime, options *RootOptions) *cobra.Command {
 	}
 }
 
-func newAuthSetupCmd(use, short, message string) *cobra.Command {
+func newAuthSetupCmd(runtime *Runtime, options *RootOptions, use, short string) *cobra.Command {
 	var (
 		profileName  string
 		munchkinID   string
@@ -60,12 +59,29 @@ func newAuthSetupCmd(use, short, message string) *cobra.Command {
 		Use:   use,
 		Short: short,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = profileName
-			_ = munchkinID
-			_ = clientID
-			_ = clientSecret
-			_ = overwrite
-			return errors.New(message)
+			resolvedMunchkinID, err := promptIfMissing(runtime, munchkinID, "Munchkin ID")
+			if err != nil {
+				return err
+			}
+			resolvedClientID, err := promptIfMissing(runtime, clientID, "Client ID")
+			if err != nil {
+				return err
+			}
+			resolvedClientSecret, err := promptIfMissing(runtime, clientSecret, "Client Secret")
+			if err != nil {
+				return err
+			}
+
+			configPath, err := config.Write(profileName, resolvedMunchkinID, resolvedClientID, resolvedClientSecret, overwrite)
+			if err != nil {
+				return err
+			}
+
+			return writeResult(runtime, options, map[string]any{
+				"status":  "saved",
+				"path":    configPath,
+				"profile": profileNameOrDefault(profileName),
+			})
 		},
 	}
 
@@ -77,6 +93,13 @@ func newAuthSetupCmd(use, short, message string) *cobra.Command {
 	flags.BoolVar(&overwrite, "overwrite", false, "Overwrite the target profile if it already exists.")
 
 	return cmd
+}
+
+func profileNameOrDefault(profileName string) string {
+	if profileName == "" {
+		return "default"
+	}
+	return profileName
 }
 
 func newAuthCheckCmd(runtime *Runtime, options *RootOptions) *cobra.Command {

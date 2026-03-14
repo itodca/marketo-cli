@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -142,6 +144,32 @@ func parseIntArg(label, raw string) (int, error) {
 		return 0, fmt.Errorf("Invalid %s: %s", label, raw)
 	}
 	return value, nil
+}
+
+func promptIfMissing(runtime *Runtime, value, label string) (string, error) {
+	if trimmed := strings.TrimSpace(value); trimmed != "" {
+		return trimmed, nil
+	}
+
+	if _, err := fmt.Fprintf(runtime.Stderr, "%s: ", label); err != nil {
+		return "", err
+	}
+
+	reader, ok := runtime.Stdin.(*bufio.Reader)
+	if !ok {
+		reader = bufio.NewReader(runtime.Stdin)
+		runtime.Stdin = reader
+	}
+	line, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return "", fmt.Errorf("%s is required", label)
+	}
+	return line, nil
 }
 
 func loadJSONInput(runtime *Runtime, inputPath string) (map[string]any, error) {

@@ -3,20 +3,22 @@
 Marketo REST API CLI for humans and AI agents.
 
 ## Tech Stack
-- Python 3.10+, `uv` for local workflows, `hatchling` for packaging
-- Typer for the CLI
-- `requests` for HTTP
-- PyInstaller for binary release artifacts
+- Go 1.25 for the CLI implementation
+- Cobra for the command tree
+- Standard library `net/http` + internal client helpers for HTTP/auth
+- GoReleaser for release artifacts
+- Python remains in the repo as the reference implementation during migration
 
 ## Structure
-- `src/mrkto/cli.py` — Typer entrypoint and command tree
-- `src/mrkto/client.py` — auth, token cache, HTTP helpers, retries, pagination
-- `src/mrkto/config.py` — config file + env var loading, profile support
-- `src/mrkto/output.py` — JSON/compact/raw formatting
-- `src/mrkto/resources/` — one file per resource group
+- `cmd/mrkto/main.go` — binary entrypoint
+- `internal/cmd/` — Cobra command tree and CLI wiring
+- `internal/client/` — auth, token cache, HTTP helpers, retries, pagination
+- `internal/config/` and `internal/profile/` — config file + env var loading, profile support
+- `internal/output/` — JSON/compact/raw formatting
 - `skills/mrkto/SKILL.md` — agent skill for using the CLI
-- `scripts/build-binary.sh` — PyInstaller release packaging
-- `.github/workflows/release.yml` — macOS/Linux release publishing
+- `scripts/build-binary.sh` — local native archive build
+- `.goreleaser.yaml` — native release packaging
+- `.github/workflows/release.yml` — tagged native release publishing
 
 ## Command Contract
 - Use singular top-level resource nouns: `lead`, `activity`, `program`, `company`
@@ -27,12 +29,12 @@ Marketo REST API CLI for humans and AI agents.
 
 ## Installation
 - Primary install path is the binary installer: `curl -fsSL .../install.sh | bash`
-- Keep source install working via `pip install .` and the `mrkto` console script
+- Keep native source install viable via `go build ./cmd/mrkto`
 - Binary naming and checksums must stay aligned with `install.sh`
 
 ## Testing
-- Run tests with `uv run pytest`
-- Validate syntax with `python3 -m compileall src tests`
+- Run Go tests with `go test ./...`
+- Keep Python reference tests runnable with `uv run pytest`
 - When changing packaging or release flow, also check `bash -n install.sh` and `bash -n scripts/build-binary.sh`
 
 ## Maintenance Notes

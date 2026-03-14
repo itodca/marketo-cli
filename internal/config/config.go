@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/itodca/marketo-cli/internal/profile"
@@ -108,4 +109,34 @@ func envOr(getenv func(string) string, key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func Write(profileName, munchkinID, clientID, clientSecret string, overwrite bool) (string, error) {
+	configPath, err := profile.ConfigFileFor(profileName)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err := os.Stat(configPath); err == nil && !overwrite {
+		return "", fmt.Errorf("Config already exists at %s. Re-run with --overwrite to replace it.", configPath)
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		return "", err
+	}
+
+	content := fmt.Sprintf(
+		"MARKETO_MUNCHKIN_ID=%s\nMARKETO_CLIENT_ID=%s\nMARKETO_CLIENT_SECRET=%s\n",
+		munchkinID,
+		clientID,
+		clientSecret,
+	)
+	if err := os.WriteFile(configPath, []byte(content), 0o600); err != nil {
+		return "", err
+	}
+
+	_ = os.Chmod(configPath, 0o600)
+	return configPath, nil
 }

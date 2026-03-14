@@ -102,3 +102,40 @@ func TestLoadUsesEnvWithoutProfileFile(t *testing.T) {
 		t.Fatalf("expected env-backed config, got %#v", cfg)
 	}
 }
+
+func TestWritePersistsNamedProfileKeyValueConfig(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	configPath, err := Write("sandbox", "123-ABC-456", "test-id", "test-secret", false)
+	if err != nil {
+		t.Fatalf("Write returned error: %v", err)
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+
+	expected := "MARKETO_MUNCHKIN_ID=123-ABC-456\nMARKETO_CLIENT_ID=test-id\nMARKETO_CLIENT_SECRET=test-secret\n"
+	if string(content) != expected {
+		t.Fatalf("unexpected file contents: %q", string(content))
+	}
+}
+
+func TestWriteRejectsExistingProfileWithoutOverwrite(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	configDir := filepath.Join(homeDir, ".config", "mrkto")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config"), []byte("MARKETO_MUNCHKIN_ID=existing\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	if _, err := Write("", "123-ABC-456", "test-id", "test-secret", false); err == nil {
+		t.Fatal("expected overwrite protection error")
+	}
+}

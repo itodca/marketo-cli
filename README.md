@@ -2,6 +2,8 @@
 
 Marketo REST API CLI for humans and agents. The installed command is `mrkto`.
 
+The current implementation is Go and ships native release archives for macOS and Linux.
+
 The CLI uses explicit resource names, structured JSON output, dry-run defaults for writes, and a raw `api` escape hatch for unsupported endpoints.
 
 ## What It Is For

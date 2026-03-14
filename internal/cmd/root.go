@@ -42,7 +42,7 @@ func NewRootCmd(runtime *Runtime) *cobra.Command {
 	rootCmd.AddCommand(newSmartListCmd(runtime, options))
 	rootCmd.AddCommand(newStaticListCmd(runtime, options))
 	rootCmd.AddCommand(newStatsCmd(runtime, options))
-	rootCmd.AddCommand(newSetupCmd())
+	rootCmd.AddCommand(newSetupCmd(runtime, options))
 	rootCmd.AddCommand(newVersionCmd(runtime))
 
 	return rootCmd
