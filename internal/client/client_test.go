@@ -1,7 +1,9 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -167,6 +169,116 @@ func TestClientRefreshesTokenAfter401(t *testing.T) {
 	}
 	if apiCalls != 2 {
 		t.Fatalf("expected two API calls, got %d", apiCalls)
+	}
+}
+
+func TestClientRefreshesStaleTokenWithoutContextCanceled(t *testing.T) {
+	t.Parallel()
+
+	tokenCalls := 0
+	apiCalls := 0
+
+	client := New(testConfig("https://example.com", "default"))
+	client.TokenCache = NewTokenCache(t.TempDir())
+	if err := client.TokenCache.Save("default", "stale-token", 3600); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+	client.HTTPClient = scriptedHTTPClient(func(request *http.Request) (*http.Response, error) {
+		switch request.URL.Path {
+		case "/identity/oauth/token":
+			tokenCalls++
+			return contextAwareResponse(request.Context(), http.StatusOK, `{"access_token":"fresh-token","expires_in":3600}`), nil
+		case "/rest/v1/leads.json":
+			apiCalls++
+			if request.Header.Get("Authorization") == "Bearer stale-token" {
+				return staticResponse(http.StatusUnauthorized, "Unauthorized"), nil
+			}
+			if request.Header.Get("Authorization") != "Bearer fresh-token" {
+				return staticResponse(http.StatusUnauthorized, "Unauthorized"), nil
+			}
+			return contextAwareResponse(request.Context(), http.StatusOK, `{"success":true,"result":[{"id":1}]}`), nil
+		default:
+			return staticResponse(http.StatusNotFound, "not found"), nil
+		}
+	})
+
+	result, err := client.Get("/v1/leads.json", nil)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+
+	if result["result"].([]any)[0].(map[string]any)["id"].(float64) != 1 {
+		t.Fatalf("unexpected payload: %#v", result)
+	}
+	if tokenCalls != 1 {
+		t.Fatalf("expected one token refresh, got %d", tokenCalls)
+	}
+	if apiCalls != 2 {
+		t.Fatalf("expected two API calls, got %d", apiCalls)
+	}
+}
+
+func TestClientRefreshesTokenAfterMarketoAuthError(t *testing.T) {
+	t.Parallel()
+
+	for _, code := range []string{"601", "602"} {
+		code := code
+		t.Run(code, func(t *testing.T) {
+			t.Parallel()
+
+			tokenCalls := 0
+			apiCalls := 0
+
+			client := New(testConfig("https://example.com", "default"))
+			client.TokenCache = NewTokenCache(t.TempDir())
+			if err := client.TokenCache.Save("default", "stale-token", 3600); err != nil {
+				t.Fatalf("Save returned error: %v", err)
+			}
+			client.HTTPClient = scriptedHTTPClient(func(request *http.Request) (*http.Response, error) {
+				switch request.URL.Path {
+				case "/identity/oauth/token":
+					tokenCalls++
+					return contextAwareResponse(request.Context(), http.StatusOK, `{"access_token":"fresh-token","expires_in":3600}`), nil
+				case "/rest/v1/leads.json":
+					apiCalls++
+					if request.Header.Get("Authorization") == "Bearer stale-token" {
+						return contextAwareResponse(request.Context(), http.StatusOK, `{"success":false,"errors":[{"code":"`+code+`","message":"Access token invalid"}]}`), nil
+					}
+					if request.Header.Get("Authorization") != "Bearer fresh-token" {
+						return staticResponse(http.StatusUnauthorized, "Unauthorized"), nil
+					}
+					return contextAwareResponse(request.Context(), http.StatusOK, `{"success":true,"result":[{"id":1}]}`), nil
+				default:
+					return staticResponse(http.StatusNotFound, "not found"), nil
+				}
+			})
+
+			result, err := client.Get("/v1/leads.json", nil)
+			if err != nil {
+				t.Fatalf("Get returned error: %v", err)
+			}
+
+			if result["result"].([]any)[0].(map[string]any)["id"].(float64) != 1 {
+				t.Fatalf("unexpected payload: %#v", result)
+			}
+			if tokenCalls != 1 {
+				t.Fatalf("expected one token refresh, got %d", tokenCalls)
+			}
+			if apiCalls != 2 {
+				t.Fatalf("expected two API calls, got %d", apiCalls)
+			}
+
+			cached, ok, err := client.TokenCache.Load("default")
+			if err != nil {
+				t.Fatalf("Load returned error: %v", err)
+			}
+			if !ok {
+				t.Fatal("expected refreshed token to be cached")
+			}
+			if cached.AccessToken != "fresh-token" {
+				t.Fatalf("expected fresh-token, got %s", cached.AccessToken)
+			}
+		})
 	}
 }
 
@@ -385,5 +497,55 @@ func TestClientReturnsHelpfulErrorForInvalidJSONResponse(t *testing.T) {
 
 	if err.Error() != "[200] Response was not valid JSON" {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+type scriptedHTTPClient func(*http.Request) (*http.Response, error)
+
+func (client scriptedHTTPClient) Do(request *http.Request) (*http.Response, error) {
+	return client(request)
+}
+
+type contextAwareBody struct {
+	ctx    context.Context
+	data   []byte
+	offset int
+}
+
+func (body *contextAwareBody) Read(buffer []byte) (int, error) {
+	if err := body.ctx.Err(); err != nil {
+		return 0, err
+	}
+	if body.offset >= len(body.data) {
+		return 0, io.EOF
+	}
+
+	read := copy(buffer, body.data[body.offset:])
+	body.offset += read
+	return read, nil
+}
+
+func (body *contextAwareBody) Close() error {
+	return nil
+}
+
+func contextAwareResponse(ctx context.Context, status int, payload string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Status:     fmt.Sprintf("%d %s", status, http.StatusText(status)),
+		Header:     make(http.Header),
+		Body: &contextAwareBody{
+			ctx:  ctx,
+			data: []byte(payload),
+		},
+	}
+}
+
+func staticResponse(status int, payload string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Status:     fmt.Sprintf("%d %s", status, http.StatusText(status)),
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(payload)),
 	}
 }

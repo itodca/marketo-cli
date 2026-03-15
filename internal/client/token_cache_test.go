@@ -37,3 +37,22 @@ func TestTokenCacheSaveAndLoadUsesPythonCompatibleShape(t *testing.T) {
 		t.Fatalf("expected %s, got %s", expectedPath, path)
 	}
 }
+
+func TestTokenCacheDeleteRemovesCachedToken(t *testing.T) {
+	t.Parallel()
+
+	cache := NewTokenCache(t.TempDir())
+	if err := cache.Save("default", "token-123", 3600); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+
+	if err := cache.Delete("default"); err != nil {
+		t.Fatalf("Delete returned error: %v", err)
+	}
+
+	if _, ok, err := cache.Load("default"); err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	} else if ok {
+		t.Fatal("expected cached token to be deleted")
+	}
+}

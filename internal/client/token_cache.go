@@ -66,6 +66,19 @@ func (cache *TokenCache) Load(profileName string) (CachedToken, bool, error) {
 	return token, true, nil
 }
 
+func (cache *TokenCache) Delete(profileName string) error {
+	path, err := cache.PathForProfile(profileName)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	return nil
+}
+
 func (cache *TokenCache) Save(profileName, accessToken string, expiresIn int) error {
 	path, err := cache.PathForProfile(profileName)
 	if err != nil {

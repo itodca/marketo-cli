@@ -237,19 +237,23 @@ func (client *Client) request(method, path string, params map[string]any, body m
 		}
 
 		response, err := client.httpClient().Do(request)
-		cancel()
 		if err != nil {
+			cancel()
 			return nil, &APIError{Code: "request_failed", Message: err.Error()}
 		}
 
 		payload, readErr := readResponseBody(response)
+		cancel()
 		if readErr != nil {
 			return nil, &APIError{Code: "request_failed", Message: readErr.Error(), HTTPStatus: response.StatusCode}
 		}
 
-		if response.StatusCode == http.StatusUnauthorized && attempts < maxAttempts {
-			forceRefresh = true
-			continue
+		if response.StatusCode == http.StatusUnauthorized {
+			client.invalidateToken()
+			if attempts < maxAttempts {
+				forceRefresh = true
+				continue
+			}
 		}
 
 		if response.StatusCode >= http.StatusBadRequest {
@@ -270,6 +274,13 @@ func (client *Client) request(method, path string, params map[string]any, body m
 		}
 
 		code, message := extractMarketoError(data)
+		if isMarketoAuthError(code) {
+			client.invalidateToken()
+			if attempts < maxAttempts {
+				forceRefresh = true
+				continue
+			}
+		}
 		if code == "606" && attempts < maxAttempts {
 			client.sleep(client.rateLimitSleep())
 			forceRefresh = false
@@ -358,12 +369,13 @@ func (client *Client) fetchToken() (string, time.Time, error) {
 	}
 
 	response, err := client.httpClient().Do(request)
-	cancel()
 	if err != nil {
+		cancel()
 		return "", time.Time{}, &APIError{Code: "auth_request_failed", Message: err.Error()}
 	}
 
 	payload, readErr := readResponseBody(response)
+	cancel()
 	if readErr != nil {
 		return "", time.Time{}, &APIError{Code: "auth_request_failed", Message: readErr.Error(), HTTPStatus: response.StatusCode}
 	}
@@ -513,6 +525,10 @@ func responseMessage(response *http.Response, payload []byte) string {
 	return response.Status
 }
 
+func isMarketoAuthError(code string) bool {
+	return code == "601" || code == "602"
+}
+
 func intValue(value any, fallback int) int {
 	switch typed := value.(type) {
 	case nil:
@@ -546,6 +562,12 @@ func (client *Client) tokenCache() *TokenCache {
 		client.TokenCache = NewTokenCache("")
 	}
 	return client.TokenCache
+}
+
+func (client *Client) invalidateToken() {
+	client.token = ""
+	client.tokenExpiry = time.Time{}
+	_ = client.tokenCache().Delete(client.Config.Profile)
 }
 
 func (client *Client) httpClient() HTTPClient {

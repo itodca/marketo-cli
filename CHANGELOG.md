@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2] — 2026-03-15
+
+Token refresh hardening release.
+
+- Fix auth and API response handling so token refresh reads the response body before the request context is canceled
+- Invalidate cached access tokens and force a refresh when Marketo returns auth failures, including `401`, `601`, and `602`
+- Add regression coverage for stale cached tokens, Marketo auth error retries, and token cache deletion
+
 ## [0.2.1] — 2026-03-14
 
 Setup and docs polish release.
