@@ -1,6 +1,6 @@
 # marketo-cli
 
-Marketo REST API CLI for humans and agents. The installed command is `mrkto`.
+`marketo-cli` is a Marketo CLI for humans and agents. The installed command is `mrkto`.
 
 The current implementation is Go and ships native release archives for macOS and Linux.
 
@@ -8,7 +8,7 @@ The CLI uses explicit resource names, structured JSON output, dry-run defaults f
 
 ## What It Is For
 
-`mrkto` is a command-line wrapper around common Marketo REST API workflows.
+`marketo-cli` is a command-line wrapper around common Marketo REST API workflows. You run it as `mrkto`.
 
 It is built for:
 
@@ -17,7 +17,7 @@ It is built for:
 - scripting Marketo tasks in shells, automations, and AI agents
 - falling back to raw API calls when a higher-level command does not exist yet
 
-If you already know the Marketo API but want a cleaner daily interface, `mrkto` is the abstraction layer. If you are using agents, the CLI keeps the contract stable with structured JSON output and predictable exit behavior.
+If you already know the Marketo API but want a cleaner daily interface, `marketo-cli` is the abstraction layer. If you are using agents, the CLI keeps the contract stable with structured JSON output and predictable exit behavior.
 
 ## Installation
 

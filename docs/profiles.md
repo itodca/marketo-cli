@@ -1,5 +1,7 @@
 # Profiles
 
+`marketo-cli` stores profiles and token cache data for the `mrkto` command.
+
 A profile is a saved Marketo connection.
 
 Each profile stores the credentials and endpoints for one Marketo connection. In most teams, that usually means one Marketo instance or environment.

@@ -1,6 +1,6 @@
-# marketo-cli (mrkto)
+# marketo-cli (command: mrkto)
 
-Marketo REST API CLI for humans and AI agents.
+`marketo-cli` is a Marketo REST API CLI for humans and AI agents.
 
 ## Tech Stack
 - Go 1.25 for the CLI implementation

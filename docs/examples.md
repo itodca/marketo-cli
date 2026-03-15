@@ -1,5 +1,7 @@
 # Examples
 
+`marketo-cli` ships the `mrkto` command shown below.
+
 ## Install, Upgrade, And Uninstall
 
 Install or upgrade the latest release:

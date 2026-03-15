@@ -1,6 +1,6 @@
 # Command Model
 
-`mrkto` uses a noun/action CLI shape:
+`marketo-cli` uses a noun/action CLI shape through the `mrkto` command:
 
 ```text
 mrkto <resource> <action> [flags]
